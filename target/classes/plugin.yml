@@ -1,0 +1,22 @@
+name: Abs01uteMagicBullet
+version: '1.0.1'
+main: com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin
+api-version: '1.21'
+authors:
+  - Sh1kaNok0
+description: Folia服务器的魔法子弹！
+folia-supported: true
+commands:
+  amb:
+    description: Abs01uteMagicBullet插件主命令
+    usage: /<command> [reload|info|help|bind|unbind|list|shoot]
+    permission: abs01utemagicbullet.admin
+    permission-message: 您没有权限使用此命令
+    aliases: [abs01utemagicbullet]
+permissions:
+  abs01utemagicbullet.admin:
+    description: 允许使用Abs01uteMagicBullet管理命令
+    default: op
+  abs01utemagicbullet.user:
+    description: 允许使用Abs01uteMagicBullet基础功能
+    default: true 
