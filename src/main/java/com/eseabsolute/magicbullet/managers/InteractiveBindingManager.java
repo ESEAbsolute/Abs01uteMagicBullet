@@ -115,12 +115,12 @@ public class InteractiveBindingManager {
     private boolean handleSpeedInput(Player player, String input, BindingSession session) {
         try {
             double speed = Double.parseDouble(input);
-            if (speed < 0.1 || speed > 10.0) {
-                messageUtils.sendErrorMessage(player, "&c速度范围: &e0.1 &7- &e10.0");
+            if (speed != 0 && speed < 0.1 || speed > 10.0) {
+                messageUtils.sendErrorMessage(player, "&c速度范围: &e0 或 0.1 &7- &e10.0");
                 return false;
             }
             
-            session.setSpeed(speed);
+            session.setSpeed(speed > 0 ? speed : 20);
             session.setCurrentStep(BindingStep.TRIGGER);
             promptForTrigger(player);
             return true;
@@ -187,7 +187,7 @@ public class InteractiveBindingManager {
      */
     private void promptForSpeed(Player player) {
         messageUtils.sendInfoMessage(player, "&6&l➤ 请输入射击速度:");
-        messageUtils.sendInfoMessage(player, "&e范围: &f0.1 &7- &f10.0");
+        messageUtils.sendInfoMessage(player, "&e范围: &f0 或 0.1 &7- &f10.0");
     }
     
     /**

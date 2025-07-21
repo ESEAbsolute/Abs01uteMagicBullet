@@ -115,9 +115,8 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
         messageUtils.sendInfoMessage(sender, "&e/amb list &7- 显示可用子弹列表");
         messageUtils.sendInfoMessage(sender, "&e/amb bind <子弹> &7- 绑定子弹到手持物品");
         messageUtils.sendInfoMessage(sender, "&e/amb unbind &7- 解绑手持物品的子弹");
-        messageUtils.sendInfoMessage(sender, "&e/amb shoot [玩家名] <子弹名> <起点偏移x,y,z> <终点偏移x,y,z> [存活时间] &7- 发射子弹");
-        messageUtils.sendInfoMessage(sender, "&7  例如: &e/amb shoot Perfect_Bullet 0,1,0 30,0,0 &7- 从头顶1格处发射到前方30格");
-        messageUtils.sendInfoMessage(sender, "&7  例如: &e/amb shoot FAFA Perfect_Bullet 0,1,0 30,0,0 &7- 让玩家FAFA发射子弹");
+        messageUtils.sendInfoMessage(sender, "&e/amb shoot [玩家名] <子弹名> <局部起点偏移^x,^y,^z> <局部终点偏移^x,^y,^z> [存活时间(ticks)] [速度]");
+        messageUtils.sendInfoMessage(sender, "&7  速度为0时将创建激光效果，存活时间即激光长度");
         if (sender.hasPermission("abs01utemagicbullet.admin")) {
             messageUtils.sendInfoMessage(sender, "&e/amb reload &7- 重载插件配置");
         }
@@ -193,22 +192,22 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             messageUtils.sendConfigMessage(sender, "messages.player-only");
             return;
         }
-        
+
 
         if (args.length < 3) {
             messageUtils.sendErrorMessage(sender, "用法: /amb shoot [玩家名] <子弹名> <局部起点偏移^x,^y,^z> <局部终点偏移^x,^y,^z> [存活时间(ticks)] [速度]");
-            messageUtils.sendInfoMessage(sender, "速度为0时将创建激光效果，存活时间控制子弹/激光持续时间");
+            messageUtils.sendInfoMessage(sender, "速度为0时将创建激光效果，存活时间即激光长度");
             return;
         }
-        
+
         Player shooter;
         String bulletName;
         String startOffset;
         String endOffset;
         int maxLifeTicks = 200; // 默认10秒(200ticks)
-        
+
         int argIndex = 1;
-        
+
         if (args.length >= 5) {
             String playerName = args[argIndex++];
             shooter = plugin.getServer().getPlayer(playerName);
@@ -217,20 +216,19 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
                 return;
             }
         } else {
-
             if (!(sender instanceof Player)) {
                 messageUtils.sendErrorMessage(sender, "控制台必须指定玩家名!");
                 return;
             }
             shooter = (Player) sender;
         }
-        
+
         bulletName = args[argIndex++];
         if (!plugin.getBulletManager().hasBullet(bulletName)) {
             messageUtils.sendErrorMessage(sender, "子弹 " + bulletName + " 不存在！");
             return;
         }
-        
+
         startOffset = args[argIndex++];
         endOffset = args[argIndex++];
         if (args.length > argIndex) {
@@ -245,7 +243,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
                 return;
             }
         }
-        
+
         Vector startOffsetVec;
         try {
             String[] startParts = startOffset.split(",");
@@ -261,7 +259,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             messageUtils.sendErrorMessage(sender, "解析局部起点偏移失败: " + e.getMessage());
             return;
         }
-        
+
         Vector endOffsetVec;
         try {
             String[] endParts = endOffset.split(",");
@@ -277,19 +275,19 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             messageUtils.sendErrorMessage(sender, "解析局部终点偏移失败: " + e.getMessage());
             return;
         }
-        
+
         var bulletConfig = plugin.getBulletManager().getBullet(bulletName);
-        
-        Location playerLoc = shooter.getLocation();
-        Vector playerDirection = playerLoc.getDirection();
-        Vector playerRight = new Vector(-playerDirection.getZ(), 0, playerDirection.getX()).normalize();
-        Vector playerUp = playerDirection.clone().crossProduct(playerRight).normalize();
-        
-        Vector startWorldOffset = convertLocalToWorld(startOffsetVec, playerDirection, playerRight, playerUp);
-        Vector endWorldOffset = convertLocalToWorld(endOffsetVec, playerDirection, playerRight, playerUp);
-        Location spawnLocation = playerLoc.clone().add(startWorldOffset);
-        
-        Vector direction = endWorldOffset.clone().subtract(startWorldOffset).normalize();
+        Location playerLoc = shooter.getEyeLocation();
+
+        // 直接计算：起点位置 = 玩家位置 + 起点偏移（转换到世界坐标）
+        Location spawnLocation = applyLocalOffset(playerLoc, startOffsetVec);
+
+        // 计算局部方向向量（终点 - 起点）
+        Vector localDirection = endOffsetVec.clone().subtract(startOffsetVec);
+
+        // 将局部方向向量转换为世界方向向量
+        Vector worldDirection = transformLocalDirectionToWorld(localDirection, playerLoc).normalize();
+
         double speed = 2.0; // 默认速度
         boolean isInstantTravel = false;
         if (args.length > argIndex) {
@@ -297,8 +295,8 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
                 speed = Double.parseDouble(args[argIndex]);
                 if (speed == 0) {
                     isInstantTravel = true;
-                    double distance = endWorldOffset.clone().subtract(startWorldOffset).length();
-                    speed = Math.max(distance, 20.0);
+                    // 激光模式：速度设为局部距离，确保能到达终点
+                    speed = Math.max(localDirection.length(), 20.0);
                 } else if (speed < 0.1 || speed > 10.0) {
                     messageUtils.sendErrorMessage(sender, "速度必须是0(激光效果)或在 0.1~10.0 之间");
                     return;
@@ -308,57 +306,112 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
                 return;
             }
         }
-        
+
         com.eseabsolute.magicbullet.entities.MagicBullet magicBullet = new com.eseabsolute.magicbullet.entities.MagicBullet(
                 plugin,
                 bulletConfig,
                 shooter,
                 spawnLocation,
-                direction.multiply(speed),
+                worldDirection.multiply(speed),
                 maxLifeTicks
         );
+
         plugin.getServer().getGlobalRegionScheduler().runDelayed(plugin, (task) -> {
-            
             com.eseabsolute.magicbullet.utils.BulletTaskUtil.runBulletTask(plugin, shooter, () -> {
                 if (!magicBullet.isDead()) {
                     magicBullet.update();
                 }
             });
         }, 1);
-        
+
 
         if (isInstantTravel) {
-            messageUtils.sendInfoMessage(sender, "已发射激光 " + bulletName + "，局部坐标从 ^" + 
-                                    startOffsetVec.getX() + ",^" + startOffsetVec.getY() + ",^" + startOffsetVec.getZ() + 
-                                    " 到 ^" + endOffsetVec.getX() + ",^" + endOffsetVec.getY() + ",^" + endOffsetVec.getZ() +
-                                    "，持续时间: " + maxLifeTicks + " ticks");
+            messageUtils.sendInfoMessage(sender, "已发射激光 " + bulletName + "，局部坐标从 ^" +
+                    startOffsetVec.getX() + ",^" + startOffsetVec.getY() + ",^" + startOffsetVec.getZ() +
+                    " 到 ^" + endOffsetVec.getX() + ",^" + endOffsetVec.getY() + ",^" + endOffsetVec.getZ() +
+                    "，探测距离: " + maxLifeTicks + " 格");
         } else {
-            messageUtils.sendInfoMessage(sender, "已发射子弹 " + bulletName + "，局部坐标从 ^" + 
-                                    startOffsetVec.getX() + ",^" + startOffsetVec.getY() + ",^" + startOffsetVec.getZ() + 
-                                    " 到 ^" + endOffsetVec.getX() + ",^" + endOffsetVec.getY() + ",^" + endOffsetVec.getZ() +
-                                    "，速度: " + speed + "，持续时间: " + maxLifeTicks + " ticks");
+            messageUtils.sendInfoMessage(sender, "已发射子弹 " + bulletName + "，局部坐标从 ^" +
+                    startOffsetVec.getX() + ",^" + startOffsetVec.getY() + ",^" + startOffsetVec.getZ() +
+                    " 到 ^" + endOffsetVec.getX() + ",^" + endOffsetVec.getY() + ",^" + endOffsetVec.getZ() +
+                    "，速度: " + speed + "，持续时间: " + maxLifeTicks + " ticks");
         }
     }
-    
+
     /**
-     * 将局部坐标转换为世界坐标
-     * @param local 局部坐标
-     * @param forward 前方向量
-     * @param right 右方向量
-     * @param up 上方向量
-     * @return 世界坐标
+     * 将局部偏移应用到玩家位置，返回世界坐标位置
+     * 只在需要确定起点位置时使用一次
      */
-    private Vector convertLocalToWorld(Vector local, Vector forward, Vector right, Vector up) {
-        // 局部坐标系: ^x(右) ^y(上) ^z(前)
-        // 将局部坐标转换为世界坐标
-        double x = local.getX();
-        double y = local.getY();
-        double z = local.getZ();
-        
-        // 右向量 * x + 上向量 * y + 前向量 * z
-        return right.clone().multiply(x)
-                .add(up.clone().multiply(y))
-                .add(forward.clone().multiply(z));
+    private Location applyLocalOffset(Location playerLoc, Vector localOffset) {
+        // 获取玩家朝向
+        float yaw = (float) Math.toRadians(playerLoc.getYaw());
+        float pitch = (float) Math.toRadians(-playerLoc.getPitch()); // 注意pitch的符号
+
+        // 计算基于玩家朝向的三个轴向量
+        double cosYaw = Math.cos(yaw);
+        double sinYaw = Math.sin(yaw);
+        double cosPitch = Math.cos(pitch);
+        double sinPitch = Math.sin(pitch);
+
+        // 前向量（Z轴正方向）
+        double forwardX = -sinYaw * cosPitch;
+        double forwardY = sinPitch;
+        double forwardZ = cosYaw * cosPitch;
+
+        // 右向量（X轴正方向）
+        double rightX = cosYaw;
+        double rightY = 0;
+        double rightZ = sinYaw;
+
+        // 上向量（Y轴正方向）
+        double upX = sinYaw * sinPitch;
+        double upY = cosPitch;
+        double upZ = -cosYaw * sinPitch;
+
+        // 应用局部偏移：世界偏移 = 右*x + 上*y + 前*z
+        double worldOffsetX = rightX * localOffset.getX() + upX * localOffset.getY() + forwardX * localOffset.getZ();
+        double worldOffsetY = rightY * localOffset.getX() + upY * localOffset.getY() + forwardY * localOffset.getZ();
+        double worldOffsetZ = rightZ * localOffset.getX() + upZ * localOffset.getY() + forwardZ * localOffset.getZ();
+
+        return playerLoc.clone().add(worldOffsetX, worldOffsetY, worldOffsetZ);
+    }
+
+    /**
+     * 将局部方向向量转换为世界方向向量
+     * 这里不需要位置，只需要方向的转换
+     */
+    private Vector transformLocalDirectionToWorld(Vector localDirection, Location playerLoc) {
+        // 获取玩家朝向
+        float yaw = (float) Math.toRadians(playerLoc.getYaw());
+        float pitch = (float) Math.toRadians(-playerLoc.getPitch()); // 注意pitch的符号
+
+        // 计算基于玩家朝向的三个轴向量
+        double cosYaw = Math.cos(yaw);
+        double sinYaw = Math.sin(yaw);
+        double cosPitch = Math.cos(pitch);
+        double sinPitch = Math.sin(pitch);
+
+        // 前向量（Z轴正方向）
+        double forwardX = -sinYaw * cosPitch;
+        double forwardY = sinPitch;
+        double forwardZ = cosYaw * cosPitch;
+
+        // 右向量（X轴正方向）
+        double rightX = cosYaw;
+        double rightY = 0;
+        double rightZ = sinYaw;
+
+        // 上向量（Y轴正方向）
+        double upX = sinYaw * sinPitch;
+        double upY = cosPitch;
+        double upZ = -cosYaw * sinPitch;
+
+        // 转换局部方向向量：世界方向 = 右*x + 上*y + 前*z
+        double worldDirX = rightX * localDirection.getX() + upX * localDirection.getY() + forwardX * localDirection.getZ();
+        double worldDirY = rightY * localDirection.getX() + upY * localDirection.getY() + forwardY * localDirection.getZ();
+        double worldDirZ = rightZ * localDirection.getX() + upZ * localDirection.getY() + forwardZ * localDirection.getZ();
+
+        return new Vector(worldDirX, worldDirY, worldDirZ);
     }
     
     @Override
@@ -433,14 +486,14 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             completions.add("0");    // 激光模式
             completions.add("1.0");  // 慢速
             completions.add("2.0");  // 默认速度
-            completions.add("5.0");  // 高速
+            completions.add("4.0");  // 高速
         } else if (args.length == 7 && args[0].equalsIgnoreCase("shoot")) {
             // 只可能是 /amb shoot <玩家名> <子弹名> <起点偏移> <终点偏移> <存活时间> <速度>
             // 补全速度示例
             completions.add("0");    // 激光模式
             completions.add("1.0");  // 慢速
             completions.add("2.0");  // 默认速度
-            completions.add("5.0");  // 高速
+            completions.add("4.0");  // 高速
         }
         return completions;
     }

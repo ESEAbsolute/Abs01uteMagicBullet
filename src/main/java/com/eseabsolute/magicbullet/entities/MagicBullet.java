@@ -3,26 +3,15 @@ package com.eseabsolute.magicbullet.entities;
 import com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin;
 import com.eseabsolute.magicbullet.models.BulletConfig;
 import com.eseabsolute.magicbullet.utils.BulletCommandExecutor;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.FallingBlock;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.util.Vector;
-import org.bukkit.util.BlockIterator;
-import org.bukkit.entity.ItemDisplay;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.*;
 import org.bukkit.entity.Display.Billboard;
-import org.bukkit.entity.Arrow;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
-import org.bukkit.Bukkit;
-import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.util.Vector;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -31,12 +20,12 @@ import java.util.UUID;
 /**
  * 魔法子弹实体
  * 实现子弹的物理行为和效果
- * 
+ *
  * @author EseAbsolute
  * @version 1.0.1
  */
 public class MagicBullet {
-    
+
     private final Abs01uteMagicBulletPlugin plugin;
     private final BulletConfig config;
     private final Player shooter;
@@ -45,53 +34,66 @@ public class MagicBullet {
     private int penetrationCount = 0;
     private boolean isDead = false;
     private int bounceCount = 0;
-    
+
     // 子弹实体
-    private ArmorStand bulletEntity;
     private FallingBlock fallingBlockEntity;
     private ItemDisplay itemDisplayEntity;
     private Arrow arrowEntity;
     private Location lastLocation;
     private int spiralTick = 0;
     private Location lastTrailLocation = null;
-    
+    private Location initialLocation;
+
     // 命令执行计数器
     private int commandTick = 0;
-    
+
     // 飞行命令tick计数器（每条命令独立）
     private java.util.List<Integer> flyCommandTicks = null;
     private java.util.List<Integer> flyCommandIntervals = null;
     private java.util.List<String> flyCommandCmds = null;
     private java.util.List<Integer> flyCommandMax = null;
     private java.util.List<Integer> flyCommandFired = null;
-    
+
     // 命令执行器
     private final BulletCommandExecutor commandExecutor;
-    
+
     // 子弹存活时间控制
     private int lifeTicks = 0;
     private final int maxLifeTicks;
-    
-    public MagicBullet(Abs01uteMagicBulletPlugin plugin, BulletConfig config, Player shooter, 
-                      Location location, Vector velocity) {
+
+    public MagicBullet(Abs01uteMagicBulletPlugin plugin, BulletConfig config, Player shooter, Location location, Vector velocity) {
         this(plugin, config, shooter, location, velocity, 200); // 默认存活10秒(200ticks)
     }
-    
-    public MagicBullet(Abs01uteMagicBulletPlugin plugin, BulletConfig config, Player shooter, 
-                      Location location, Vector velocity, int maxLifeTicks) {
+
+    public MagicBullet(Abs01uteMagicBulletPlugin plugin, BulletConfig config, Player shooter, Location location, Vector velocity, int maxLifeTicks) {
         this.plugin = plugin;
         this.config = config;
         this.shooter = shooter;
         this.velocity = velocity.clone();
+        this.initialLocation = location.clone();
         this.commandExecutor = new BulletCommandExecutor(plugin);
         this.maxLifeTicks = maxLifeTicks;
-        
-        if (velocity.length() > 20) {
-            plugin.getLogger().info("高速子弹已激活，速度: " + velocity.length());
+
+        boolean isLaserMode = velocity.length() >= 20;
+        if (isLaserMode) {
+            Vector direction = velocity.clone().normalize();
+            double maxDistance = maxLifeTicks;
+
+            // 使用步进射线追踪找到最终位置
+            RayTraceResult rayResult = performPreciseRayTrace(initialLocation, direction, maxDistance);
+
+            Location endLocation;
+            if (rayResult != null && rayResult.getHitBlock() != null) {
+                endLocation = rayResult.getHitPosition().toLocation(initialLocation.getWorld());
+            } else {
+                endLocation = initialLocation.clone().add(direction.clone().multiply(maxDistance));
+            }
+            createBulletEntity(endLocation);
+        } else {
+            createBulletEntity(initialLocation);
         }
-        
-        createBulletEntity(location);
-        playShootSound(location);
+
+        playShootSound(initialLocation);
 
 
         flyCommandTicks = new java.util.ArrayList<>();
@@ -107,9 +109,9 @@ public class MagicBullet {
                 java.util.List<?> shootCmds = onShootSection.getList("commands");
                 java.util.List<String> shootCmdList = new java.util.ArrayList<>();
                 for (Object obj : shootCmds) {
-                    if (obj instanceof String) shootCmdList.add((String)obj);
+                    if (obj instanceof String) shootCmdList.add((String) obj);
                     else if (obj instanceof java.util.Map) {
-                        Object c = ((java.util.Map<?,?>)obj).get("cmd");
+                        Object c = ((java.util.Map<?, ?>) obj).get("cmd");
                         if (c != null) shootCmdList.add(c.toString());
                     }
                 }
@@ -123,23 +125,29 @@ public class MagicBullet {
                 java.util.List<?> list = onFlySection.getList("commands");
                 for (Object obj : list) {
                     if (obj instanceof String) {
-                        flyCommandCmds.add((String)obj);
+                        flyCommandCmds.add((String) obj);
                         flyCommandIntervals.add(onFlySection.getInt("interval", 20));
                         flyCommandTicks.add(0);
                         flyCommandMax.add(-1);
                         flyCommandFired.add(0);
                     } else if (obj instanceof java.util.Map) {
-                        java.util.Map<?,?> map = (java.util.Map<?,?>)obj;
+                        java.util.Map<?, ?> map = (java.util.Map<?, ?>) obj;
                         String cmd = map.get("cmd") != null ? map.get("cmd").toString() : "";
                         int interval = 20;
                         Object intervalObj = map.get("interval");
                         if (intervalObj != null) {
-                            try { interval = Integer.parseInt(intervalObj.toString()); } catch(Exception ignore){}
+                            try {
+                                interval = Integer.parseInt(intervalObj.toString());
+                            } catch (Exception ignored) {
+                            }
                         }
                         int max = -1;
                         Object maxObj = map.get("max");
                         if (maxObj != null) {
-                            try { max = Integer.parseInt(maxObj.toString()); } catch(Exception ignore){}
+                            try {
+                                max = Integer.parseInt(maxObj.toString());
+                            } catch (Exception ignored) {
+                            }
                         }
                         flyCommandCmds.add(cmd);
                         flyCommandIntervals.add(interval);
@@ -151,25 +159,25 @@ public class MagicBullet {
             }
         }
     }
-    
+
 
     private void createBulletEntity(Location location) {
         String modelType = config.getModel();
-        
+        boolean isLaserMode = velocity.length() >= 20;
         if ("block".equalsIgnoreCase(modelType)) {
             // 创建方块子弹
-            createBlockBullet(location);
+            createBlockBullet(location, isLaserMode);
         } else if ("arrow".equalsIgnoreCase(modelType)) {
-            // 创建箭头子弹
-            createArrowBullet(location);
+            // 创建箭矢子弹
+            createArrowBullet(location, isLaserMode);
         } else {
             // 创建物品子弹
-            createItemBullet(location);
+            createItemBullet(location, isLaserMode);
         }
     }
-    
 
-    private void createBlockBullet(Location location) {
+
+    private void createBlockBullet(Location location, boolean invisible) {
         Material blockMaterial = Material.valueOf(config.getBlock().toUpperCase());
         // 使用Folia的RegionScheduler在正确的线程上执行实体操作
         plugin.getServer().getRegionScheduler().execute(plugin, location, () -> {
@@ -185,15 +193,17 @@ public class MagicBullet {
                 fallingBlockEntity.setTicksLived(fallingBlockEntity.getTicksLived() + 1);
                 // fallingBlockEntity.setCustomName("MagicBullet");
                 // fallingBlockEntity.setCustomNameVisible(false);
+
+                fallingBlockEntity.setInvisible(invisible);
             } catch (Exception e) {
                 plugin.getLogger().severe("在区域线程上创建方块子弹失败: " + e.getMessage());
                 e.printStackTrace();
             }
         });
     }
-    
 
-    private void createItemBullet(Location location) {
+
+    private void createItemBullet(Location location, boolean invisible) {
         try {
             final ItemStack itemStack = new ItemStack(Material.valueOf(config.getItem().toUpperCase()));
             // 使用Folia的RegionScheduler在正确的线程上执行实体操作
@@ -213,6 +223,7 @@ public class MagicBullet {
                             display.setInvulnerable(true);
                             // display.setCustomName("§b" + config.getName() + " §7(魔法子弹)");
                             // display.setCustomNameVisible(true);
+                            display.setInvisible(invisible);
                         });
                     });
                 } catch (Exception e) {
@@ -249,9 +260,9 @@ public class MagicBullet {
             });
         }
     }
-    
 
-    private void createArrowBullet(Location location) {
+
+    private void createArrowBullet(Location location, boolean invisible) {
         // 使用Folia的RegionScheduler在正确的线程上执行实体操作
         plugin.getServer().getRegionScheduler().execute(plugin, location, () -> {
             try {
@@ -262,234 +273,368 @@ public class MagicBullet {
                 arrowEntity.setGravity(false);
                 arrowEntity.setSilent(true); // 确保箭矢本身不会发出声音
                 arrowEntity.setInvulnerable(true);
-                
-
                 arrowEntity.setPersistent(false);
+                arrowEntity.setInvisible(invisible);
             } catch (Exception e) {
-                plugin.getLogger().severe("在区域线程上创建箭头子弹失败: " + e.getMessage());
+                plugin.getLogger().severe("在区域线程上创建箭矢子弹失败: " + e.getMessage());
                 e.printStackTrace();
             }
         });
     }
-    
+
 
     public void update() {
         if (isDead) return;
-        
 
+        // 生命周期检查
         lifeTicks++;
         if (lifeTicks >= maxLifeTicks) {
             destroy();
             return;
         }
 
+        // 检查是否为激光模式
+        boolean isLaserMode = velocity.length() >= 20;
+        if (isLaserMode && lifeTicks <= 1) {
+            handleLaserMode();
+            return;
+        }
+
+        // 仅普通子弹模式才依赖实体位置
         Location currentLocation = getCurrentLocation();
         if (currentLocation == null) {
             destroy();
             return;
         }
-        if (lastLocation == null) lastLocation = currentLocation.clone();
-        
 
-        if (velocity.length() > 20 && lifeTicks == 1) {
-            Vector direction = velocity.clone().normalize();
-            
-            double maxDistance = velocity.length();
-            
-            Location from = currentLocation.clone();
-            Location to = from.clone().add(direction.clone().multiply(maxDistance));
-            
-            Block collidedBlock = getCollidedBlock(from, to);
-            Location hitLocation = null;
-            
-            if (collidedBlock != null) {
-                hitLocation = collidedBlock.getLocation().add(0.5, 0.5, 0.5);
-                Vector toBlockCenter = hitLocation.toVector();
-                Vector fromVec = from.toVector();
-                Vector dirToBlock = toBlockCenter.clone().subtract(fromVec).normalize();
-                to = from.clone().add(dirToBlock.multiply(fromVec.distance(toBlockCenter) - 0.5));
+
+        // 初始化上一个位置
+        if (lastLocation == null) {
+            lastLocation = currentLocation.clone();
+        }
+
+        // 普通射弹模式
+        handleProjectileMode(currentLocation);
+    }
+
+    /**
+     * 处理激光模式 - 瞬间到达目标
+     */
+    private void handleLaserMode() {
+        Vector direction = velocity.clone().normalize();
+        double maxDistance = maxLifeTicks;
+
+        // 使用步进射线追踪找到最终位置
+        RayTraceResult rayResult = performPreciseRayTrace(initialLocation, direction, maxDistance);
+
+        Location endLocation;
+        if (rayResult != null && rayResult.getHitBlock() != null) {
+            endLocation = rayResult.getHitPosition().toLocation(initialLocation.getWorld());
+        } else {
+            endLocation = initialLocation.clone().add(direction.clone().multiply(maxDistance));
+        }
+        lastLocation = endLocation.clone();
+
+        // 渲染激光
+        renderLaserBeam(initialLocation, endLocation);
+
+        // 沿路径检测实体碰撞
+        try {
+            checkEntitiesAlongPath(initialLocation, endLocation);
+        } catch (Exception ignored) {
+        }
+
+        // 处理方块碰撞
+        if (rayResult != null && rayResult.getHitBlock() != null) {
+            handleBlockCollision(rayResult.getHitBlock());
+        }
+
+        // 执行飞行命令
+        executeOnFlyCommands(endLocation);
+
+        destroy(endLocation);
+    }
+
+    /**
+     * 处理普通射弹模式 - 逐步移动
+     */
+    private void handleProjectileMode(Location currentLocation) {
+        // 应用重力
+        applyGravity();
+
+        // 应用旋转
+        applyRotation();
+
+        // 计算下一个位置
+        Vector frameVelocity = velocity.clone();
+        Location targetLocation = currentLocation.clone().add(frameVelocity);
+
+        // 精确的移动和碰撞检测
+        Location actualEndLocation = performPreciseMovement(currentLocation, targetLocation);
+
+        if (!isDead) {
+            // 更新实体位置
+            updateEntityPosition(actualEndLocation);
+
+            // 渲染粒子效果
+            renderParticles(actualEndLocation);
+
+            // 执行飞行命令
+            executeOnFlyCommands(actualEndLocation);
+
+            // 检查最大射程
+            checkMaxRange(actualEndLocation);
+
+            // 更新上一个位置
+            lastLocation = actualEndLocation.clone();
+        }
+    }
+
+    /**
+     * 精确的移动和碰撞检测
+     */
+    private Location performPreciseMovement(Location from, Location to) {
+        Vector moveVector = to.toVector().subtract(from.toVector());
+        double totalDistance = moveVector.length();
+
+        if (totalDistance == 0) {
+            return from;
+        }
+
+        Vector direction = moveVector.normalize();
+        double stepSize = Math.min(0.1, totalDistance / 10); // 动态步长
+        double currentDistance = 0;
+        Location currentPos = from.clone();
+
+        // 步进检测
+        while (currentDistance < totalDistance && !isDead) {
+            double remainingDistance = totalDistance - currentDistance;
+            double thisStepSize = Math.min(stepSize, remainingDistance);
+
+            Location nextPos = currentPos.clone().add(direction.clone().multiply(thisStepSize));
+
+            // 检查方块碰撞
+            if (checkBlockCollisionBetween(currentPos, nextPos)) {
+                // 找到精确的碰撞点
+                Location collisionPoint = findPreciseBlockCollision(currentPos, nextPos);
+                return collisionPoint != null ? collisionPoint : currentPos;
             }
-            renderLaserBeam(from, to);
-            
 
-            for (Entity entity : from.getWorld().getNearbyEntities(from, maxDistance, maxDistance, maxDistance)) {
-                if (entity instanceof LivingEntity && entity != shooter &&
-                    entity != bulletEntity && entity != fallingBlockEntity && entity != arrowEntity &&
-                    !hitEntities.contains(entity.getUniqueId())) {
-                    
-                    Vector entityVec = entity.getLocation().toVector();
-                    Vector fromVec = from.toVector();
-                    Vector toVec = to.toVector();
-                    if (isEntityInPath(fromVec, toVec, entityVec, 1.5)) {
-                        // 处理实体碰撞
-                        handleEntityCollision((LivingEntity) entity);
+            // 检查实体碰撞
+            checkEntityCollisionAtPosition(nextPos);
+
+            if (isDead) {
+                return currentPos;
+            }
+
+            currentPos = nextPos;
+            currentDistance += thisStepSize;
+        }
+
+        return currentPos;
+    }
+
+    /**
+     * 高精度射线追踪
+     */
+    private RayTraceResult performPreciseRayTrace(Location start, Vector direction, double maxDistance) {
+        World world = start.getWorld();
+        if (world == null) return null;
+
+        // 使用Minecraft原生的射线追踪
+        RayTraceResult result = world.rayTraceBlocks(start, direction, maxDistance, FluidCollisionMode.NEVER, true);
+
+        return result;
+    }
+
+    /**
+     * 检查路径上的所有实体
+     */
+    private void checkEntitiesAlongPath(Location start, Location end) {
+        Vector pathVector = end.toVector().subtract(start.toVector());
+        double pathLength = pathVector.length();
+        Vector direction = pathVector.normalize();
+
+        // 沿路径分段检查实体，确保不遗漏
+        double stepSize = 1.0; // 每1格检查一次
+        int steps = (int) Math.ceil(pathLength / stepSize);
+
+        for (int i = 0; i <= steps; i++) {
+            double progress = Math.min(i * stepSize / pathLength, 1.0);
+            Location checkPoint = start.clone().add(pathVector.clone().multiply(progress));
+
+            // 在每个检查点搜索附近实体
+            double searchRadius = 2.0;
+            for (Entity entity : checkPoint.getWorld().getNearbyEntities(checkPoint, searchRadius, searchRadius, searchRadius)) {
+                if (!(entity instanceof LivingEntity) || entity == shooter || entity == itemDisplayEntity
+                        || entity == fallingBlockEntity || entity == arrowEntity || hitEntities.contains(entity.getUniqueId())) {
+                    continue;
+                }
+
+                // 精确判断实体是否与激光路径相交
+                if (isEntityInLaserPath(start, end, entity)) {
+                    handleEntityCollision((LivingEntity) entity);
+                    if (penetrationCount >= config.getPenetration()) {
+                        return; // 达到穿透上限，停止检查
                     }
                 }
             }
-            
+        }
+    }
 
-            if (collidedBlock != null) {
-                handleBlockCollision(collidedBlock);
-            }
-            
+    /**
+     * 检查实体是否在激光路径上
+     */
+    private boolean isEntityInLaserPath(Location start, Location end, Entity entity) {
+        Location entityLoc = entity.getLocation().add(0, entity.getHeight() / 2, 0);
+        double entityRadius = Math.max(entity.getBoundingBox().getWidthX(), entity.getBoundingBox().getWidthZ()) / 2;
 
-            executeOnFlyCommands(to);
-            
+        double distanceToPath = distanceFromPointToLineSegment(
+                start.toVector(),
+                end.toVector(),
+                entityLoc.toVector()
+        );
 
-            destroy();
-            return;
+        return distanceToPath <= entityRadius + 0.1; // 0.1 是误差容忍
+    }
+
+    /**
+     * 计算点到线段的距离
+     */
+    private double distanceFromPointToLineSegment(Vector lineStart, Vector lineEnd, Vector point) {
+        Vector lineVec = lineEnd.clone().subtract(lineStart);
+        Vector pointVec = point.clone().subtract(lineStart);
+
+        double lineLength = lineVec.lengthSquared();
+        if (lineLength == 0) {
+            return point.distance(lineStart);
         }
 
+        double t = Math.max(0, Math.min(1, pointVec.dot(lineVec) / lineLength));
+        Vector projection = lineStart.clone().add(lineVec.multiply(t));
 
+        return point.distance(projection);
+    }
+
+    /**
+     * 精确的方块碰撞检测
+     */
+    private boolean checkBlockCollisionBetween(Location from, Location to) {
+        World world = from.getWorld();
+        if (world == null) return false;
+
+        Vector direction = to.toVector().subtract(from.toVector());
+        double distance = direction.length();
+
+        if (distance == 0) return false;
+
+        direction.normalize();
+
+        RayTraceResult result = world.rayTraceBlocks(from, direction, distance, FluidCollisionMode.NEVER, true);
+
+        if (result != null && result.getHitBlock() != null) {
+            Block hitBlock = result.getHitBlock();
+            if (!hitBlock.getType().isAir() && hitBlock.getType().isSolid()) {
+                handleBlockCollision(hitBlock);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 找到精确的碰撞点
+     */
+    private Location findPreciseBlockCollision(Location from, Location to) {
+        World world = from.getWorld();
+        if (world == null) return null;
+
+        Vector direction = to.toVector().subtract(from.toVector());
+        double distance = direction.length();
+        direction.normalize();
+
+        RayTraceResult result = world.rayTraceBlocks(from, direction, distance, FluidCollisionMode.NEVER, true);
+
+        if (result != null && result.getHitPosition() != null) {
+            return result.getHitPosition().toLocation(world);
+        }
+
+        return null;
+    }
+
+    /**
+     * 在特定位置检查实体碰撞
+     */
+    private void checkEntityCollisionAtPosition(Location location) {
+        double checkRange = "arrow".equalsIgnoreCase(config.getModel()) ? 1.5 : 1.3;
+
+        for (Entity entity : location.getWorld().getNearbyEntities(location, checkRange, checkRange * 1.5, checkRange)) {
+
+            if (!(entity instanceof LivingEntity) || entity == shooter || entity == itemDisplayEntity || entity == fallingBlockEntity || entity == arrowEntity || hitEntities.contains(entity.getUniqueId())) {
+                continue;
+            }
+
+            // 使用边界盒精确检测
+            BoundingBox entityBox = entity.getBoundingBox();
+            double projectileRadius = 0.16;
+
+            Vector closestPoint = getClosestPointOnBoundingBox(location.toVector(), entityBox);
+            double distance = location.toVector().distance(closestPoint);
+
+            if (distance <= projectileRadius) {
+                handleEntityCollision((LivingEntity) entity);
+                break;
+            }
+        }
+    }
+
+    /**
+     * 应用重力效果
+     */
+    private void applyGravity() {
         if (config.getPhysics() != null && config.getPhysics().getGravity() > 0) {
             velocity.add(new Vector(0, -config.getPhysics().getGravity(), 0));
         }
+    }
 
-
+    /**
+     * 应用旋转效果
+     */
+    private void applyRotation() {
         if (fallingBlockEntity != null && config.isRotate()) {
-            float yaw = fallingBlockEntity.getLocation().getYaw() + 15f; // 每tick旋转15°
-            float pitch = fallingBlockEntity.getLocation().getPitch(); // pitch保持不变
+            float yaw = fallingBlockEntity.getLocation().getYaw() + 15f;
+            float pitch = fallingBlockEntity.getLocation().getPitch();
             fallingBlockEntity.setRotation(yaw, pitch);
         }
+    }
 
+    /**
+     * 更新实体位置
+     */
+    private void updateEntityPosition(Location newLocation) {
+        moveEntityWithVelocity(newLocation.toVector().subtract(getCurrentLocation().toVector()));
+    }
 
-        Location newLocation = currentLocation.clone().add(velocity);
-
-
-        if (!isDead && checkBlockCollision(lastLocation, newLocation)) {
-
-            Block collidedBlock = getCollidedBlock(lastLocation, newLocation);
-            if (collidedBlock != null) {
-                handleBlockCollision(collidedBlock);
-                return;
-            }
-        }
-
-        if (isDead) return;
-
-
-        moveEntityWithVelocity(velocity);
-
-
-        if (!isDead) {
-            checkEntityCollision(newLocation);
-        }
-
-        if (isDead) return;
-
-
-        renderParticles(newLocation);
-
-
-        executeOnFlyCommands(newLocation);
-
-
-        double distance = newLocation.distance(shooter.getLocation());
+    /**
+     * 检查最大射程
+     */
+    private void checkMaxRange(Location currentLocation) {
+        double distance = currentLocation.distance(shooter.getLocation());
         if (distance > config.getMaxRange()) {
             destroy();
-            return;
         }
-
-        lastLocation = newLocation.clone();
     }
-    
 
     private Location getCurrentLocation() {
         if (arrowEntity != null && !arrowEntity.isDead()) {
             return arrowEntity.getLocation();
         } else if (itemDisplayEntity != null && !itemDisplayEntity.isDead()) {
             return itemDisplayEntity.getLocation();
-        } else if (bulletEntity != null && !bulletEntity.isDead()) {
-            return bulletEntity.getLocation();
         } else if (fallingBlockEntity != null && !fallingBlockEntity.isDead()) {
             return fallingBlockEntity.getLocation();
         }
         return null;
-    }
-    
-
-    private Block getCollidedBlock(Location from, Location to) {
-        Vector direction = to.toVector().subtract(from.toVector());
-        double distance = direction.length();
-        
-
-        if (distance < 0.1) {
-            return null;
-        }
-        
-        Vector normalizedDirection = direction.normalize();
-        
-
-        if ("arrow".equalsIgnoreCase(config.getModel())) {
-
-            double step = 0.15; // 减小步长提高精度
-            int steps = (int) Math.ceil(distance / step);
-            
-            for (int i = 0; i < steps; i++) {
-                Vector pos = from.toVector().add(normalizedDirection.clone().multiply(i * step));
-                Block block = from.getWorld().getBlockAt(pos.getBlockX(), pos.getBlockY(), pos.getBlockZ());
-                
-
-                if (block.getType() != Material.AIR && (block.getType().isSolid() || isLeafBlock(block.getType()))) {
-
-                    BoundingBox box = block.getBoundingBox().expand(0.05);
-                    if (box.contains(pos)) {
-                        return block;
-                    }
-                }
-            }
-            
-            return null;
-        } else {
-
-            try {
-
-                BlockIterator iter = new BlockIterator(from.getWorld(), from.toVector(), normalizedDirection, 0, (int) Math.ceil(distance) + 1);
-                while (iter.hasNext()) {
-                    Block block = iter.next();
-                    if (block.getType() != Material.AIR && (block.getType().isSolid() || isLeafBlock(block.getType()))) {
-                        return block;
-                    }
-                }
-                
-
-                double step = 0.2;
-                int steps = (int) Math.ceil(distance / step);
-                
-                for (int i = 0; i < steps; i++) {
-                    Vector pos = from.toVector().add(normalizedDirection.clone().multiply(i * step));
-                    Block block = from.getWorld().getBlockAt(pos.getBlockX(), pos.getBlockY(), pos.getBlockZ());
-                    
-                    if (block.getType() != Material.AIR && (block.getType().isSolid() || isLeafBlock(block.getType()))) {
-
-                        BoundingBox box = block.getBoundingBox().expand(0.05);
-                        if (box.contains(pos)) {
-                            return block;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-
-                double step = 0.2;
-                int steps = (int) Math.ceil(distance / step);
-                
-                for (int i = 0; i < steps; i++) {
-                    Vector pos = from.toVector().add(normalizedDirection.clone().multiply(i * step));
-                    Block block = from.getWorld().getBlockAt(pos.getBlockX(), pos.getBlockY(), pos.getBlockZ());
-                    
-                    if (block.getType() != Material.AIR && (block.getType().isSolid() || isLeafBlock(block.getType()))) {
-                        return block;
-                    }
-                }
-            }
-            
-            return null;
-        }
-    }
-    
-
-    private boolean checkBlockCollision(Location from, Location to) {
-        return getCollidedBlock(from, to) != null;
     }
 
 
@@ -499,84 +644,20 @@ public class MagicBullet {
         } else if (itemDisplayEntity != null && !itemDisplayEntity.isDead()) {
             Location loc = itemDisplayEntity.getLocation().add(velocity);
             itemDisplayEntity.teleportAsync(loc);
-        } else if (bulletEntity != null && !bulletEntity.isDead()) {
-            bulletEntity.setVelocity(velocity);
         } else if (fallingBlockEntity != null && !fallingBlockEntity.isDead()) {
             fallingBlockEntity.setVelocity(velocity);
         }
     }
 
+    /**
+     * 获取点到碰撞箱的最近点
+     */
+    private Vector getClosestPointOnBoundingBox(Vector point, BoundingBox box) {
+        double x = Math.max(box.getMinX(), Math.min(point.getX(), box.getMaxX()));
+        double y = Math.max(box.getMinY(), Math.min(point.getY(), box.getMaxY()));
+        double z = Math.max(box.getMinZ(), Math.min(point.getZ(), box.getMaxZ()));
 
-    private void checkEntityCollision(Location location) {
-
-        double checkRange = "arrow".equalsIgnoreCase(config.getModel()) ? 1.5 : 1.2;
-
-        double verticalRange = checkRange * 1.5;
-        
-        for (Entity entity : location.getWorld().getNearbyEntities(location, checkRange, verticalRange, checkRange)) {
-            if (entity instanceof LivingEntity && entity != shooter &&
-                entity != bulletEntity && entity != fallingBlockEntity && entity != arrowEntity &&
-                !hitEntities.contains(entity.getUniqueId())) {
-                
-
-                if ("arrow".equalsIgnoreCase(config.getModel())) {
-
-                    BoundingBox entityBox = entity.getBoundingBox().expand(0.2);
-
-                    Vector direction = velocity.clone().normalize();
-                    Location from = lastLocation != null ? lastLocation.clone() : location.clone().subtract(direction);
-                    
-
-                    Vector ray = direction.clone().multiply(checkRange * 2.5);
-                    
-
-                    RayTraceResult result = entityBox.rayTrace(from.toVector(), direction, ray.length());
-                    if (result != null) {
-                        handleEntityCollision((LivingEntity) entity);
-                        break;
-                    } else {
-
-                        boolean hit = false;
-                        for (double offset : new double[]{0.5, 1.0, -0.5, -1.0}) {
-                            Vector offsetDir = direction.clone().add(new Vector(0, offset * 0.2, 0)).normalize();
-                            result = entityBox.rayTrace(from.toVector(), offsetDir, ray.length());
-                            if (result != null) {
-                                hit = true;
-                                break;
-                            }
-                        }
-                        
-                        if (hit) {
-                            handleEntityCollision((LivingEntity) entity);
-                            break;
-                        }
-                    }
-                } else {
-                    // 非箭矢类型使用改进的距离+射线检测
-                    // 首先检查实体中心与子弹的直线距离
-                    Location entityLoc = entity.getLocation().add(0, entity.getHeight() / 2, 0);
-                    double distance = location.distance(entityLoc);
-                    
-                    if (distance <= checkRange) {
-                        // 直接命中
-                        handleEntityCollision((LivingEntity) entity);
-                        break;
-                    } else {
-                        // 如果距离稍远，尝试使用射线检测
-                        BoundingBox entityBox = entity.getBoundingBox().expand(0.2);
-                        Vector direction = velocity.clone().normalize();
-                        Location from = lastLocation != null ? lastLocation.clone() : location.clone().subtract(direction);
-                        Vector ray = direction.clone().multiply(checkRange * 1.5);
-                        
-                        RayTraceResult result = entityBox.rayTrace(from.toVector(), direction, ray.length());
-                        if (result != null) {
-                            handleEntityCollision((LivingEntity) entity);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        return new Vector(x, y, z);
     }
 
     /**
@@ -587,23 +668,23 @@ public class MagicBullet {
         if ("arrow".equalsIgnoreCase(config.getModel()) && arrowEntity != null && !arrowEntity.isDead()) {
             // 获取当前位置
             Location currentLocation = arrowEntity.getLocation();
-            
+
             // 播放箭矢射中方块的音效 - 只播放一次
             currentLocation.getWorld().playSound(currentLocation, Sound.ENTITY_ARROW_HIT, 1.0f, 1.0f);
-            
+
             // 如果配置了爆炸效果，触发爆炸
             if (config.getExplosion() != null && config.getExplosion().isEnabled()) {
                 createExplosion(currentLocation);
             }
-            
+
             // 执行落地命令
             executeOnLandCommands(currentLocation);
-            
+
             // 直接销毁子弹
             destroy();
             return;
         }
-        
+
         // 非箭矢类型子弹的原有处理逻辑
         if (config.getPhysics() != null && config.getPhysics().isBounce()) {
             Vector normal = getBlockNormal(block);
@@ -654,7 +735,7 @@ public class MagicBullet {
             }
         }
     }
-    
+
     /**
      * 处理实体碰撞
      */
@@ -665,8 +746,8 @@ public class MagicBullet {
         double hitY = getCurrentLocation() != null ? getCurrentLocation().getY() : entity.getLocation().getY();
         double headThresholdY;
         if (config.isHeadshotEnabled()) {
-            if (entity instanceof Player) {
-                headThresholdY = ((Player)entity).getEyeLocation().getY();
+            if (entity instanceof Player player) {
+                headThresholdY = player.getEyeLocation().getY();
             } else {
                 BoundingBox box = entity.getBoundingBox();
                 headThresholdY = box.getMaxY() - (box.getHeight() / 4.0);
@@ -692,7 +773,7 @@ public class MagicBullet {
         Location currentLocation = getCurrentLocation();
         if (currentLocation != null) {
             currentLocation.getWorld().playSound(currentLocation, Sound.ENTITY_PLAYER_ATTACK_CRIT, 0.5f, 1.0f);
-            
+
             // 执行命中命令
             executeOnHitCommands(currentLocation, entity);
         }
@@ -700,7 +781,7 @@ public class MagicBullet {
             destroy();
         }
     }
-    
+
     /**
      * 获取方块法向量（简化版本）
      */
@@ -708,7 +789,7 @@ public class MagicBullet {
         // 简化版本，假设子弹从上方击中
         return new Vector(0, 1, 0);
     }
-    
+
     /**
      * 渲染粒子效果
      */
@@ -717,7 +798,7 @@ public class MagicBullet {
         if (isDead) {
             return;
         }
-        
+
         BulletConfig.ParticlePresetConfig preset = config.getParticlePreset();
         if (preset != null) {
             if ("spiral".equalsIgnoreCase(preset.getType())) {
@@ -735,7 +816,7 @@ public class MagicBullet {
                     for (int i = 0; i < preset.getCount(); i++) {
                         double angle = time + (2 * Math.PI / preset.getCount()) * i;
                         Vector offset = right.clone().multiply(Math.cos(angle) * preset.getRadius())
-                                        .add(up.clone().multiply(Math.sin(angle) * preset.getRadius()));
+                                             .add(up.clone().multiply(Math.sin(angle) * preset.getRadius()));
                         Location particleLoc = interp.clone().add(offset);
                         location.getWorld().spawnParticle(preset.getParticle(), particleLoc, 1, 0, 0, 0, 0, null, true);
                     }
@@ -762,7 +843,7 @@ public class MagicBullet {
             location.getWorld().spawnParticle(config.getParticle(), location, 1, 0, 0, 0, 0, null, true);
         }
     }
-    
+
     /**
      * 渲染激光束效果
      * 在起点和终点之间创建密集的粒子线
@@ -772,12 +853,12 @@ public class MagicBullet {
         Vector direction = to.clone().subtract(from).toVector();
         double distance = direction.length();
         direction.normalize();
-        
+
         // 确定使用哪种粒子
         Particle particleType;
         int particleCount;
         double particleSpeed;
-        
+
         // 优先使用粒子预设中的粒子
         if (config.getParticlePreset() != null) {
             particleType = config.getParticlePreset().getParticle();
@@ -793,68 +874,56 @@ public class MagicBullet {
             particleCount = 1;
             particleSpeed = 0.01;
         }
-        
+
         // 计算需要多少粒子才能创建连续的光束效果
         // 每0.2格放置一个粒子，确保视觉上连续
-        int steps = Math.max(5, (int)(distance * 5)); // 至少5个点，每0.2格一个粒子
-        
+        int steps = Math.max(5, (int) (distance * 5)); // 至少5个点，每0.2格一个粒子
+
         // 创建粒子线
         for (int i = 0; i < steps; i++) {
             double ratio = (double) i / (steps - 1);
             Location particleLoc = from.clone().add(direction.clone().multiply(ratio * distance));
-            
+
             // 在每个点生成粒子
-            from.getWorld().spawnParticle(
-                particleType,
-                particleLoc,
-                particleCount,
-                0.02, 0.02, 0.02, // 小范围随机偏移，使光束看起来更自然
-                particleSpeed,
-                null,
-                true // 强制所有玩家都能看到
-            );
-            
+            from.getWorld()
+                .spawnParticle(particleType, particleLoc, particleCount, 0.02, 0.02, 0.02, // 小范围随机偏移，使光束看起来更自然
+                        particleSpeed, null, true // 强制所有玩家都能看到
+                );
+
             // 如果有粒子预设且是spiral类型，添加环绕效果使激光看起来更酷
             if (config.getParticlePreset() != null && "spiral".equalsIgnoreCase(config.getParticlePreset().getType())) {
                 // 选择一个不平行的向量作为辅助轴
                 Vector up0 = Math.abs(direction.getY()) < 0.99 ? new Vector(0, 1, 0) : new Vector(1, 0, 0);
                 Vector right = direction.clone().crossProduct(up0).normalize();
                 Vector up = right.clone().crossProduct(direction).normalize();
-                
+
                 double radius = config.getParticlePreset().getRadius() * 0.5; // 减小半径使激光看起来更集中
                 int spiralPoints = Math.max(2, config.getParticlePreset().getCount());
-                
+
                 for (int j = 0; j < spiralPoints; j++) {
                     double angle = (ratio * 10) + (2 * Math.PI / spiralPoints) * j;
                     Vector offset = right.clone().multiply(Math.cos(angle) * radius)
-                                   .add(up.clone().multiply(Math.sin(angle) * radius));
+                                         .add(up.clone().multiply(Math.sin(angle) * radius));
                     Location spiralLoc = particleLoc.clone().add(offset);
-                    
-                    from.getWorld().spawnParticle(
-                        particleType,
-                        spiralLoc,
-                        1,
-                        0, 0, 0,
-                        0,
-                        null,
-                        true
-                    );
+
+                    from.getWorld().spawnParticle(particleType, spiralLoc, 1, 0, 0, 0, 0, null, true);
                 }
             }
         }
     }
-    
+
     /**
      * 销毁子弹
      */
     public void destroy() {
+        destroy(getCurrentLocation());
+    }
+
+    public void destroy(Location destroyLocation) {
         if (isDead) {
             return;
         }
         isDead = true;
-
-        // 先获取当前位置用于效果
-        Location effectLocation = getCurrentLocation();
 
         // 优先移除FallingBlock实体，确保不会生成方块
         if (fallingBlockEntity != null && !fallingBlockEntity.isDead()) {
@@ -872,20 +941,17 @@ public class MagicBullet {
         if (itemDisplayEntity != null && !itemDisplayEntity.isDead()) {
             itemDisplayEntity.remove();
         }
-        if (bulletEntity != null && !bulletEntity.isDead()) {
-            bulletEntity.remove();
-        }
 
-        if (effectLocation == null) {
+        if (destroyLocation == null) {
             return;
         }
 
         // 爆炸效果
         if (config.getExplosion() != null) {
-            createExplosion(effectLocation);
+            createExplosion(destroyLocation);
         }
     }
-    
+
     /**
      * 爆炸效果（保留自定义粒子/伤害）
      */
@@ -897,19 +963,19 @@ public class MagicBullet {
         if (explosion.getSound() != null && !explosion.getSound().isEmpty()) {
             try {
                 org.bukkit.Sound sound = org.bukkit.Sound.valueOf(explosion.getSound().toUpperCase());
-                
+
                 // 使用自定义的音量和音调
                 float volume = explosion.getSoundVolume();
                 float pitch = explosion.getSoundPitch();
-                
+
                 // 增加爆炸音效的可听范围
                 // 1. 在爆炸位置播放音效 - 只播放一次
                 location.getWorld().playSound(location, sound, volume, pitch);
-                
+
                 // 2. 在爆炸范围内的多个点播放音效，增加可听范围 - 限制数量
                 double radius = explosion.getRadius();
                 // 在爆炸范围内随机选择几个点播放音效，减少点数量
-                int extraSoundPoints = Math.min(2, (int)(radius));
+                int extraSoundPoints = Math.min(2, (int) (radius));
                 for (int i = 0; i < extraSoundPoints; i++) {
                     double angle = Math.random() * Math.PI * 2;
                     double distance = Math.random() * radius * 0.7;
@@ -918,15 +984,16 @@ public class MagicBullet {
                     Location soundLoc = location.clone().add(x, 0, z);
                     location.getWorld().playSound(soundLoc, sound, volume * 0.6f, pitch);
                 }
-                
+
                 // 3. 为所有附近玩家播放音效 - 使用更合理的范围
                 double hearingRange = Math.min(radius * 2.5, 30); // 限制最大听力范围为30格
                 for (Player player : Bukkit.getOnlinePlayers()) {
-                    if (player.getWorld().equals(location.getWorld()) && 
-                        player.getLocation().distance(location) <= hearingRange && 
-                        player.getLocation().distance(location) > radius) { // 只为超出爆炸范围的玩家播放
+                    if (player.getWorld().equals(location.getWorld()) && player.getLocation()
+                                                                               .distance(location) <= hearingRange && player
+                            .getLocation().distance(location) > radius) { // 只为超出爆炸范围的玩家播放
                         // 根据距离调整音量
-                        float distanceVolume = (float) (volume * (1 - player.getLocation().distance(location) / hearingRange));
+                        float distanceVolume = (float) (volume * (1 - player.getLocation()
+                                                                            .distance(location) / hearingRange));
                         if (distanceVolume > 0.1f) {
                             player.playSound(player.getLocation(), sound, distanceVolume, pitch);
                         }
@@ -941,22 +1008,13 @@ public class MagicBullet {
         // 爆炸粒子效果
         if (explosion.getParticle() != null) {
             // 增加粒子效果的可见范围，设置为true表示所有玩家都能看到
-            location.getWorld().spawnParticle(
-                explosion.getParticle(),
-                location,
-                explosion.getParticleCount(),
-                explosion.getParticleSpread(),
-                explosion.getParticleSpread(),
-                explosion.getParticleSpread(),
-                0.1,
-                null,
-                true
-            );
+            location.getWorld()
+                    .spawnParticle(explosion.getParticle(), location, explosion.getParticleCount(), explosion.getParticleSpread(), explosion.getParticleSpread(), explosion.getParticleSpread(), 0.1, null, true);
         }
 
         // 额外自定义爆炸伤害
         for (Entity entity : location.getWorld().getNearbyEntities(location, explosion.getRadius(), explosion.getRadius(), explosion.getRadius())) {
-            if (entity instanceof LivingEntity && entity != shooter && entity != bulletEntity && entity != fallingBlockEntity && entity != arrowEntity) {
+            if (entity instanceof LivingEntity && entity != shooter && entity != itemDisplayEntity && entity != fallingBlockEntity && entity != arrowEntity) {
                 double distance = entity.getLocation().distance(location);
                 if (distance <= explosion.getRadius()) {
                     double damage = explosion.getDamage() * (1 - distance / explosion.getRadius());
@@ -965,38 +1023,15 @@ public class MagicBullet {
             }
         }
     }
-    
+
     /**
      * 检查子弹是否已销毁
      */
     public boolean isDead() {
-        return isDead || 
-               (bulletEntity != null && bulletEntity.isDead()) || 
+        return isDead ||
                (fallingBlockEntity != null && fallingBlockEntity.isDead()) ||
                (arrowEntity != null && arrowEntity.isDead()) ||
                (itemDisplayEntity != null && itemDisplayEntity.isDead());
-    }
-    
-    /**
-     * 获取子弹位置
-     */
-    public Location getLocation() {
-        Location currentLocation = getCurrentLocation();
-        return currentLocation != null ? currentLocation.clone() : null;
-    }
-    
-    /**
-     * 获取子弹配置
-     */
-    public BulletConfig getConfig() {
-        return config;
-    }
-    
-    /**
-     * 获取射击者
-     */
-    public Player getShooter() {
-        return shooter;
     }
 
     /**
@@ -1033,65 +1068,23 @@ public class MagicBullet {
             }
         }
     }
-    
+
     /**
      * 执行落地时命令
      */
     private void executeOnLandCommands(Location location) {
         if (location == null) return;
-        
+
         commandExecutor.executeOnLandCommands(config.getName(), location, shooter);
     }
-    
+
     /**
      * 执行命中时命令
      */
     private void executeOnHitCommands(Location location, LivingEntity target) {
         if (location == null || target == null) return;
-        
+
         commandExecutor.executeOnHitCommands(config.getName(), location, target, shooter);
     }
 
-    // 1. 在类内添加辅助方法
-    private boolean isLeafBlock(Material material) {
-        String name = material.name();
-        return name.contains("LEAVES") || name.equals("AZALEA_LEAVES") || name.equals("MANGROVE_LEAVES");
-    }
-    
-    /**
-     * 检查实体是否在路径上
-     * @param start 路径起点
-     * @param end 路径终点
-     * @param point 实体位置
-     * @param maxDistance 最大距离
-     * @return 是否在路径上
-     */
-    private boolean isEntityInPath(Vector start, Vector end, Vector point, double maxDistance) {
-        // 计算方向向量
-        Vector direction = end.clone().subtract(start).normalize();
-        
-        // 计算实体到起点的向量
-        Vector toPoint = point.clone().subtract(start);
-        
-        // 计算投影长度
-        double projLength = toPoint.dot(direction);
-        
-        // 如果投影长度为负，说明实体在起点之前
-        if (projLength < 0) {
-            return start.distance(point) <= maxDistance;
-        }
-        
-        // 如果投影长度大于路径长度，说明实体在终点之后
-        double pathLength = end.distance(start);
-        if (projLength > pathLength) {
-            return end.distance(point) <= maxDistance;
-        }
-        
-        // 计算实体到路径的最短距离
-        Vector projection = start.clone().add(direction.clone().multiply(projLength));
-        double distance = projection.distance(point);
-        
-        // 如果距离小于阈值，说明实体在路径上
-        return distance <= maxDistance;
-    }
-} 
+}
