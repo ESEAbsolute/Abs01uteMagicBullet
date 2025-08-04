@@ -1,4 +1,4 @@
-package com.eseabsolute.magicbullet.entities;
+package com.eseabsolute.magicbullet.entities.properties;
 
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
@@ -59,7 +59,7 @@ public enum CoordinateType {
     public abstract Vector toRelativeOffset(Location direction, Vector vector);
 
     public static List<String> getAllTypes() {
-        return Arrays.stream(BulletType.values())
+        return Arrays.stream(values())
                 .map(Enum::name)
                 .toList();
     }

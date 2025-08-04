@@ -1,9 +1,9 @@
 package com.eseabsolute.magicbullet.commands;
 
 import com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin;
-import com.eseabsolute.magicbullet.entities.BulletShape;
-import com.eseabsolute.magicbullet.entities.BulletType;
-import com.eseabsolute.magicbullet.entities.CoordinateType;
+import com.eseabsolute.magicbullet.entities.properties.BulletShape;
+import com.eseabsolute.magicbullet.entities.properties.BulletType;
+import com.eseabsolute.magicbullet.entities.properties.CoordinateType;
 import com.eseabsolute.magicbullet.entities.MagicBullet;
 import com.eseabsolute.magicbullet.models.BulletConfig;
 import com.eseabsolute.magicbullet.utils.BulletTaskUtil;
@@ -17,6 +17,8 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.bukkit.util.Vector;
 import org.bukkit.Location;
 import org.jetbrains.annotations.NotNull;
@@ -33,6 +35,11 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
     
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
+        if (!sender.hasPermission("abs01utemagicbullet.user") || !sender.hasPermission("abs01utemagicbullet.admin")) {
+            messageUtils.sendConfigMessage(sender, "messages.no-permission");
+            return true;
+        }
+
         if (args.length == 0) {
             showHelp(sender);
             return true;
@@ -113,24 +120,14 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
         messageUtils.sendInfoMessage(sender, "&6==================");
     }
 
-    // Command: amb [0]shoot [1]Player [2]Bullet [3]BulletType [4]BulletShape [5]LifeTicks [6]CoordType1 [7]x1 [8]y1 [9]z1 [10]CoordType2 [11]x2 [12]y2 [13]z2
+    // Command: amb shoot Player Bullet BulletType BulletShape LifeTicks LaunchPositionOffsetVectorType x1 y1 z1 VelocityVectorType x2 y2 z2
     private void handleShoot(CommandSender sender, String[] args) {
-//        no need to check CommandSender?
-//        if (!(sender instanceof Player) && args.length < 3) {
-//            messageUtils.sendConfigMessage(sender, "messages.player-only");
-//            return;
-//        }
-
         // TODO rewrite i18n
         if (args.length != 14) {
-//            messageUtils.sendErrorMessage(sender, "Usage: /amb shoot <player> <bullet> <^x0> <^y0> <^z0> <^x1> <^y1> <^z1> <lifetime (ticks)> <velocity>");
-//            messageUtils.sendInfoMessage(sender, "Velocity = 0 indicates a laser with length of 'lifetime' and speed of the distance between two local coordinates");
-//            messageUtils.sendInfoMessage(sender, "Local coordinate format: ^x directed to the left, ^y directed upwards and ^z directed to the facing");
-
-
             // TODO rewrite command help
-//            messageUtils.sendErrorMessage(sender, "Usage: /amb shoot <玩家名> <子弹名> <^x0> <^y0> <^z0> <^x1> <^y1> <^z1> <存活游戏刻> <>");
-            messageUtils.sendInfoMessage(sender, "Velocity = 0 indicates a laser with length of 'lifetime' and speed of the distance between two local coordinates");
+            messageUtils.sendErrorMessage(sender, "Usage & Sample:");
+            messageUtils.sendErrorMessage(sender, "/amb shoot Player Bullet BulletType BulletShape LifeTicks LaunchPositionOffsetVectorType x1 y1 z1 VelocityVectorType x2 y2 z2");
+            messageUtils.sendErrorMessage(sender, "/amb shoot ESEAbsolute Example_bullet PROJECTILE NORMAL 2000 LOCAL 0 0 0 LOCAL 0 0 1");
             messageUtils.sendInfoMessage(sender, "Local coordinate format: ^x directed to the left, ^y directed upwards and ^z directed to the facing");
             return;
         }
@@ -166,14 +163,14 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             return;
         }
 
-        // [4] BulletType arg logic
+        // [4] BulletShape arg logic
         String bulletShapeRaw = args[4].toUpperCase();
         BulletShape bulletShape;
         try {
             bulletShape = BulletShape.valueOf(bulletShapeRaw);
         } catch (IllegalArgumentException e) {
             // TODO i18n
-            messageUtils.sendErrorMessage(sender, "子弹样式 " + bulletTypeRaw + " 不存在！");
+            messageUtils.sendErrorMessage(sender, "子弹样式 " + bulletShapeRaw + " 不存在！");
             return;
         }
 
@@ -193,7 +190,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             return;
         }
 
-        // [6] CoordType1 arg logic
+        // [6] Launch Coordinate Vector Type arg logic
         String launchCoordinateTypeRaw = args[6].toUpperCase();
         CoordinateType launchCoordinateType;
         try {
@@ -217,7 +214,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             return;
         }
 
-        // [10] CoordType1 arg logic
+        // [10] Velocity Vector Type arg logic
         String velocityCoordinateTypeRaw = args[10].toUpperCase();
         CoordinateType velocityCoordinateType;
         try {
@@ -228,7 +225,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             return;
         }
 
-        // [11] ~ [13] Launch Coordinate arg logic
+        // [11] ~ [13] Velocity Vector arg logic
         Vector velocityVector;
         try {
             double x = Double.parseDouble(args[11]);
@@ -270,10 +267,9 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
     }
     
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
-            // 补全子命令
             List<String> subCommands = new ArrayList<>(Arrays.asList("help", "info", "list", "shoot"));
             if (sender.hasPermission("abs01utemagicbullet.admin")) {
                 subCommands.add("reload");
@@ -283,58 +279,61 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
                     completions.add(subCommand);
                 }
             }
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("shoot")) {
-            // /amb shoot <玩家名>
-            for (Player player : plugin.getServer().getOnlinePlayers()) {
-                if (player.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
-                    completions.add(player.getName());
-                }
-            }
-        } else if (args.length == 3 && args[0].equalsIgnoreCase("shoot")) {
-            // 可能是 /amb shoot <玩家名> <子弹名>
-            // 检查args[1]是否是玩家名
-            if (plugin.getServer().getPlayer(args[1]) != null) {
-                // 如果是玩家名，补全子弹名
-                for (String bulletName : plugin.getBulletManager().getBulletNames()) {
-                    if (bulletName.toLowerCase().startsWith(args[2].toLowerCase())) {
-                        completions.add(bulletName);
+        }
+
+        if (args[0].equalsIgnoreCase("shoot")) {
+            switch (args.length) {
+                case 2: // [1] Player
+                    for (Player player : plugin.getServer().getOnlinePlayers()) {
+                        if (player.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
+                            completions.add(player.getName());
+                        }
                     }
-                }
-            } else {
-                // 如果不是玩家名，补全起点偏移示例 (局部坐标)
-                completions.add("0,1,0");  // 正上方1格
-                completions.add("0,0,1");  // 正前方1格
-                completions.add("1,0,0");  // 右侧1格
-                completions.add("-1,0,0"); // 左侧1格
+                    break;
+                case 3: // [2] Bullet
+                    for (String bulletName : plugin.getBulletManager().getBulletNames()) {
+                        if (bulletName.toLowerCase().startsWith(args[2].toLowerCase())) {
+                            completions.add(bulletName);
+                        }
+                    }
+                    break;
+                case 4: // [3] BulletType
+                    completions = BulletType.getAllTypes().stream()
+                            .filter(name -> name.toUpperCase().startsWith(args[3].toUpperCase()))
+                            .toList();
+                    break;
+                case 5: // [4] BulletShape
+                    completions = BulletShape.getAllTypes().stream()
+                            .filter(name -> name.toUpperCase().startsWith(args[4].toUpperCase()))
+                            .toList();
+                    break;
+                case 6: // [5] LifeTicks
+                    break;
+                case 7: // [6] Launch Coordinate Vector Type
+                    completions = CoordinateType.getAllTypes().stream()
+                            .filter(name -> name.toUpperCase().startsWith(args[6].toUpperCase()))
+                            .toList();
+                    break;
+                case 8: // [7] ~ [9] Launch Coordinate
+                    break;
+                case 9: // [7] ~ [9] Launch Coordinate
+                    break;
+                case 10: // [7] ~ [9] Launch Coordinate
+                    break;
+                case 11: // [10] Velocity Vector Type
+                    completions = CoordinateType.getAllTypes().stream()
+                            .filter(name -> name.toUpperCase().startsWith(args[10].toUpperCase()))
+                            .toList();
+                    break;
+                case 12: // [11] ~ [13] Velocity Vector
+                    break;
+                case 13: // [11] ~ [13] Velocity Vector
+                    break;
+                case 14: // [11] ~ [13] Velocity Vector
+                    break;
+                default:
+                    break;
             }
-        } else if (args.length == 4 && args[0].equalsIgnoreCase("shoot")) {
-            // 可能是 /amb shoot <玩家名> <子弹名> <起点偏移> 或 /amb shoot <子弹名> <起点偏移> <终点偏移>
-            // 补全偏移示例 (局部坐标)
-            completions.add("0,0,10");  // 正前方10格
-            completions.add("0,5,10");  // 前方10格上方5格
-            completions.add("5,0,10");  // 前方10格右侧5格
-            completions.add("-5,0,10"); // 前方10格左侧5格
-        } else if (args.length == 5 && args[0].equalsIgnoreCase("shoot")) {
-            // 可能是 /amb shoot <玩家名> <子弹名> <起点偏移> <终点偏移> 或 /amb shoot <子弹名> <起点偏移> <终点偏移> <存活时间>
-            // 补全存活时间示例
-            completions.add("60");   // 3秒
-            completions.add("100");  // 5秒
-            completions.add("200");  // 10秒
-            completions.add("400");  // 20秒
-        } else if (args.length == 6 && args[0].equalsIgnoreCase("shoot")) {
-            // 可能是 /amb shoot <玩家名> <子弹名> <起点偏移> <终点偏移> <存活时间> 或 /amb shoot <子弹名> <起点偏移> <终点偏移> <存活时间> <速度>
-            // 补全速度示例
-            completions.add("0");    // 激光模式
-            completions.add("1.0");  // 慢速
-            completions.add("2.0");  // 默认速度
-            completions.add("4.0");  // 高速
-        } else if (args.length == 7 && args[0].equalsIgnoreCase("shoot")) {
-            // 只可能是 /amb shoot <玩家名> <子弹名> <起点偏移> <终点偏移> <存活时间> <速度>
-            // 补全速度示例
-            completions.add("0");    // 激光模式
-            completions.add("1.0");  // 慢速
-            completions.add("2.0");  // 默认速度
-            completions.add("4.0");  // 高速
         }
         return completions;
     }

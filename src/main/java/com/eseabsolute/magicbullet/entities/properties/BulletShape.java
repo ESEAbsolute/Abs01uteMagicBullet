@@ -1,4 +1,4 @@
-package com.eseabsolute.magicbullet.entities;
+package com.eseabsolute.magicbullet.entities.properties;
 
 import org.bukkit.util.Vector;
 
@@ -53,7 +53,7 @@ public enum BulletShape {
     public abstract List<Vector> generate(Vector relativeCoordinate);
 
     public static List<String> getAllTypes() {
-        return Arrays.stream(BulletType.values())
+        return Arrays.stream(values())
                 .map(Enum::name)
                 .toList();
     }

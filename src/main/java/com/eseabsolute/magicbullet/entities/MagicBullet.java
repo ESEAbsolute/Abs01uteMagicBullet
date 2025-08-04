@@ -1,9 +1,9 @@
 package com.eseabsolute.magicbullet.entities;
 
 import com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin;
+import com.eseabsolute.magicbullet.entities.properties.BulletType;
 import com.eseabsolute.magicbullet.models.BulletConfig;
 import com.eseabsolute.magicbullet.utils.BulletCommandExecutor;
-import com.eseabsolute.magicbullet.utils.HeadshotChecker;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
