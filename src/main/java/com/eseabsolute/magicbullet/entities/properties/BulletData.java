@@ -1,16 +1,8 @@
-package com.eseabsolute.magicbullet.models;
+package com.eseabsolute.magicbullet.entities.properties;
 
-import org.bukkit.Material;
 import org.bukkit.Particle;
 
-/**
- * 子弹配置类
- * 存储子弹的各种属性和配置
- * 
- * @author EseAbsolute
- * @version 1.0.1
- */
-public class BulletConfig {
+public class BulletData {
     
     private final String name;
     private final String modelType; // "item" 或 "block"
@@ -31,12 +23,12 @@ public class BulletConfig {
     private final double headshotMultiplier;
     private final boolean rotate;
     
-    public BulletConfig(String name, String modelType, String item, String block, 
-                       Particle particle, double damage, boolean ignoreArmor, 
-                       int penetration, ExplosionConfig explosion, PhysicsConfig physics,
-                       double cooldown, double maxRange, int bounceLimit,
-                       ParticlePresetConfig particlePreset, ShootSoundConfig shootSound,
-                       boolean headshotEnabled, double headshotMultiplier, boolean rotate) {
+    public BulletData(String name, String modelType, String item, String block,
+                      Particle particle, double damage, boolean ignoreArmor,
+                      int penetration, ExplosionConfig explosion, PhysicsConfig physics,
+                      double cooldown, double maxRange, int bounceLimit,
+                      ParticlePresetConfig particlePreset, ShootSoundConfig shootSound,
+                      boolean headshotEnabled, double headshotMultiplier, boolean rotate) {
         this.name = name;
         this.modelType = modelType;
         this.item = item;
@@ -112,10 +104,7 @@ public class BulletConfig {
     public boolean isHeadshotEnabled() { return headshotEnabled; }
     public double getHeadshotMultiplier() { return headshotMultiplier; }
     public boolean isRotate() { return rotate; }
-    
-    /**
-     * 爆炸配置内部类
-     */
+
     public static class ExplosionConfig {
         private final boolean enabled;
         private final double radius;
@@ -151,10 +140,7 @@ public class BulletConfig {
         public int getParticleCount() { return particleCount; }
         public double getParticleSpread() { return particleSpread; }
     }
-    
-    /**
-     * 物理配置内部类
-     */
+
     public static class PhysicsConfig {
         private final double gravity;
         private final double knockback;
@@ -179,9 +165,6 @@ public class BulletConfig {
         }
     }
 
-    /**
-     * 粒子预设配置内部类
-     */
     public static class ParticlePresetConfig {
         private final String type; // spiral, trail
         private final Particle particle;
@@ -209,10 +192,7 @@ public class BulletConfig {
         public double getInterval() { return interval; }
         public int getDensity() { return density; }
     }
-    
-    /**
-     * 射击音效配置内部类
-     */
+
     public static class ShootSoundConfig {
         private final boolean enabled;
         private final String sound;

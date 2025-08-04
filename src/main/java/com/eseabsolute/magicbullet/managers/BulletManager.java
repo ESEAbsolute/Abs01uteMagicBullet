@@ -1,8 +1,7 @@
 package com.eseabsolute.magicbullet.managers;
 
 import com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin;
-import com.eseabsolute.magicbullet.models.BulletConfig;
-import org.bukkit.Material;
+import com.eseabsolute.magicbullet.entities.properties.BulletData;
 import org.bukkit.Particle;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -23,7 +22,7 @@ import java.util.List;
 public class BulletManager {
     
     private final Abs01uteMagicBulletPlugin plugin;
-    private final Map<String, BulletConfig> bullets = new HashMap<>();
+    private final Map<String, BulletData> bullets = new HashMap<>();
     private YamlConfiguration bulletsConfig; // 新增成员变量
     
     public BulletManager(Abs01uteMagicBulletPlugin plugin) {
@@ -47,7 +46,7 @@ public class BulletManager {
         
         for (String bulletName : bulletsSection.getKeys(false)) {
             try {
-                BulletConfig bullet = loadBullet(bulletName, bulletsSection.getConfigurationSection(bulletName));
+                BulletData bullet = loadBullet(bulletName, bulletsSection.getConfigurationSection(bulletName));
                 if (bullet != null) {
                     bullets.put(bulletName, bullet);
                     plugin.getLogger().info("成功加载子弹配置: " + bulletName);
@@ -61,7 +60,7 @@ public class BulletManager {
     }
     
 
-    private BulletConfig loadBullet(String name, ConfigurationSection section) {
+    private BulletData loadBullet(String name, ConfigurationSection section) {
         if (section == null) {
             return null;
         }
@@ -86,7 +85,7 @@ public class BulletManager {
             
 
             ConfigurationSection explosionSection = section.getConfigurationSection("explosion");
-            BulletConfig.ExplosionConfig explosion = null;
+            BulletData.ExplosionConfig explosion = null;
             if (explosionSection != null) {
                 boolean enabled = explosionSection.getBoolean("enabled", true);
                 double radius = explosionSection.getDouble("radius", 3.0);
@@ -103,23 +102,23 @@ public class BulletManager {
                 float soundPitch = (float) explosionSection.getDouble("sound_pitch", 1.0);
                 int particleCount = explosionSection.getInt("particle_count", 20);
                 double particleSpread = explosionSection.getDouble("particle_spread", 0.5);
-                explosion = new BulletConfig.ExplosionConfig(enabled, radius, explosionDamage, explosionParticle, 
+                explosion = new BulletData.ExplosionConfig(enabled, radius, explosionDamage, explosionParticle,
                                                            explosionSound, soundVolume, soundPitch, 
                                                            particleCount, particleSpread);
             }
             
 
             ConfigurationSection physicsSection = section.getConfigurationSection("physics");
-            BulletConfig.PhysicsConfig physics = null;
+            BulletData.PhysicsConfig physics = null;
             if (physicsSection != null) {
                 double gravity = physicsSection.getDouble("gravity", 0.1);
                 double knockback = physicsSection.getDouble("knockback", 1.5);
                 boolean bounce = physicsSection.getBoolean("bounce", true);
-                physics = new BulletConfig.PhysicsConfig(gravity, knockback, bounce);
+                physics = new BulletData.PhysicsConfig(gravity, knockback, bounce);
             }
             
 
-            BulletConfig.ParticlePresetConfig particlePreset = null;
+            BulletData.ParticlePresetConfig particlePreset = null;
             ConfigurationSection presetSection = section.getConfigurationSection("particle_preset");
             if (presetSection != null) {
                 String presetType = presetSection.getString("type", "spiral");
@@ -135,23 +134,23 @@ public class BulletManager {
                 double rotateSpeed = presetSection.getDouble("rotate_speed", 0.25);
                 double interval = presetSection.getDouble("interval", 0.2);
                 int density = presetSection.getInt("density", 6);
-                particlePreset = new BulletConfig.ParticlePresetConfig(
+                particlePreset = new BulletData.ParticlePresetConfig(
                     presetType, presetParticle, radius, count, rotateSpeed, interval, density
                 );
             }
             
 
-            BulletConfig.ShootSoundConfig shootSound = null;
+            BulletData.ShootSoundConfig shootSound = null;
             ConfigurationSection soundSection = section.getConfigurationSection("shoot_sound");
             if (soundSection != null) {
                 boolean enabled = soundSection.getBoolean("enabled", true);
                 String sound = soundSection.getString("sound", "ENTITY_ARROW_SHOOT");
                 float volume = (float) soundSection.getDouble("volume", 1.0);
                 float pitch = (float) soundSection.getDouble("pitch", 1.0);
-                shootSound = new BulletConfig.ShootSoundConfig(enabled, sound, volume, pitch);
+                shootSound = new BulletData.ShootSoundConfig(enabled, sound, volume, pitch);
             } else {
 
-                shootSound = new BulletConfig.ShootSoundConfig(true, "ENTITY_ARROW_SHOOT", 1.0f, 1.0f);
+                shootSound = new BulletData.ShootSoundConfig(true, "ENTITY_ARROW_SHOOT", 1.0f, 1.0f);
             }
             
 
@@ -192,7 +191,7 @@ public class BulletManager {
                 }
             }
 
-            return new BulletConfig(name, modelType, item, block, particle, damage, ignoreArmor, penetration, explosion, physics, cooldown, maxRange, bounceLimit, particlePreset, shootSound, headshotEnabled, headshotMultiplier, rotate);
+            return new BulletData(name, modelType, item, block, particle, damage, ignoreArmor, penetration, explosion, physics, cooldown, maxRange, bounceLimit, particlePreset, shootSound, headshotEnabled, headshotMultiplier, rotate);
             
         } catch (Exception e) {
             plugin.getLogger().severe("子弹配置错误 " + name + ": " + e.getMessage());
@@ -201,7 +200,7 @@ public class BulletManager {
     }
     
 
-    public BulletConfig getBullet(String name) {
+    public BulletData getBullet(String name) {
         return bullets.get(name);
     }
     

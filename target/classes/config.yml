@@ -1,50 +1,18 @@
 # Abs01uteMagicBullet 插件配置文件
 # 版本: 1.0.1
 
-# 插件基础设置
-settings:
-  # 是否启用调试模式
-  debug: true
-  # 插件前缀
+basics:
+  debug: false
   prefix: "&8[&bAbs01uteMagicBullet&8] &r"
-  # 是否在控制台显示启动信息
-  show-startup-message: true
 
-# 消息配置
-messages:
-  plugin-enabled: "&a插件已启用！"
-  plugin-disabled: "&c插件已禁用！"
-  reload-success: "&a配置重载成功！"
-  reload-failed: "&c配置重载失败！"
-  no-permission: "&c您没有权限执行此操作！"
-  player-only: "&c此命令只能由玩家执行！"
-  invalid-command: "&c无效的命令！使用 /abs01utemagicbullet help 或 /amb help 查看帮助。"
-  bullet-bound: "&a成功绑定子弹 &e{bullet} &a到手持物品！"
-  bullet-unbound: "&a成功解绑手持物品的子弹！"
-  bullet-not-found: "&c子弹 &e{bullet} &c不存在！"
-  no-item-in-hand: "&c请手持一个物品！"
-  no-bullet-bound: "&c手持物品没有绑定子弹！"
-  shooting-direction: "&a请输入射击方向 (forward/backward/left/right/up/down):"
-  shooting-speed: "&a请输入子弹速度 (0.1-10.0):"
-  bullet-shot: "&a发射了 &e{bullet} &a子弹！"
+language:
+  default: "zh_cn"
+  fallback: "en_us"
 
-# 魔法子弹配置
-# bullets: ...（已迁移到 bullets.yml）
-
-# 功能配置
 features:
-  # 魔法子弹系统
   magic-bullet:
     enabled: true
-    cooldown: 1.0
-    max-range: 100.0
-    # 注意：箭矢插在方块上的功能已移除，以解决可能导致的问题 
-  
-  # 命令子弹配置
   command-bullet:
-    # 是否启用命令子弹功能
     enabled: true
-    # 是否记录命令执行日志
-    log-commands: true
-    # 最大命令执行次数限制（每个子弹生命周期内）
-    max-command-executions: 50 
+    log-commands: false
+    max-command-executions: 500

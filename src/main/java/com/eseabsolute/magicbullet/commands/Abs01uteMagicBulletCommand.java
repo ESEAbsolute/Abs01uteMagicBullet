@@ -5,7 +5,7 @@ import com.eseabsolute.magicbullet.entities.properties.BulletShape;
 import com.eseabsolute.magicbullet.entities.properties.BulletType;
 import com.eseabsolute.magicbullet.entities.properties.CoordinateType;
 import com.eseabsolute.magicbullet.entities.MagicBullet;
-import com.eseabsolute.magicbullet.models.BulletConfig;
+import com.eseabsolute.magicbullet.entities.properties.BulletData;
 import com.eseabsolute.magicbullet.utils.BulletTaskUtil;
 import com.eseabsolute.magicbullet.utils.MessageUtils;
 import org.bukkit.command.Command;
@@ -17,7 +17,6 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.bukkit.util.Vector;
 import org.bukkit.Location;
@@ -150,7 +149,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             messageUtils.sendErrorMessage(sender, "子弹 " + bulletNameRaw + " 不存在！");
             return;
         }
-        BulletConfig bullet = plugin.getBulletManager().getBullet(bulletNameRaw);
+        BulletData bullet = plugin.getBulletManager().getBullet(bulletNameRaw);
 
         // [3] BulletType arg logic
         String bulletTypeRaw = args[3].toUpperCase();
