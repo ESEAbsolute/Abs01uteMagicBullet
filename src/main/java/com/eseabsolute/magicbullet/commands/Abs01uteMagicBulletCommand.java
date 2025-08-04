@@ -50,12 +50,6 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             case "help":
                 showHelp(sender);
                 break;
-            case "bind":
-                handleBind(sender, args);
-                break;
-            case "unbind":
-                handleUnbind(sender);
-                break;
             case "list":
                 handleList(sender);
                 break;
@@ -113,61 +107,12 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
         messageUtils.sendInfoMessage(sender, "&e/amb help &7- 显示此帮助信息");
         messageUtils.sendInfoMessage(sender, "&e/amb info &7- 显示插件信息");
         messageUtils.sendInfoMessage(sender, "&e/amb list &7- 显示可用子弹列表");
-        messageUtils.sendInfoMessage(sender, "&e/amb bind <子弹> &7- 绑定子弹到手持物品");
-        messageUtils.sendInfoMessage(sender, "&e/amb unbind &7- 解绑手持物品的子弹");
         messageUtils.sendInfoMessage(sender, "&e/amb shoot [玩家名] <子弹名> <局部起点偏移^x,^y,^z> <局部终点偏移^x,^y,^z> [存活时间(ticks)] [速度]");
         messageUtils.sendInfoMessage(sender, "&7  速度为0时将创建激光效果，存活时间即激光长度");
         if (sender.hasPermission("abs01utemagicbullet.admin")) {
             messageUtils.sendInfoMessage(sender, "&e/amb reload &7- 重载插件配置");
         }
         messageUtils.sendInfoMessage(sender, "&6================================");
-    }
-    
-    /**
-     * 处理绑定命令
-     */
-    private void handleBind(CommandSender sender, String[] args) {
-        if (!(sender instanceof Player)) {
-            messageUtils.sendConfigMessage(sender, "messages.player-only");
-            return;
-        }
-        
-        Player player = (Player) sender;
-        
-        if (args.length < 2) {
-            messageUtils.sendErrorMessage(player, "用法: /amb bind <子弹名称>");
-            return;
-        }
-        
-        String bulletName = args[1];
-        
-        // 开始交互式绑定会话
-        if (plugin.getInteractiveBindingManager().startBindingSession(player, bulletName)) {
-            messageUtils.sendInfoMessage(player, "&a开始交互式绑定！请按照提示输入参数。");
-        }
-    }
-    
-    /**
-     * 处理解绑命令
-     */
-    private void handleUnbind(CommandSender sender) {
-        if (!(sender instanceof Player)) {
-            messageUtils.sendConfigMessage(sender, "messages.player-only");
-            return;
-        }
-        
-        Player player = (Player) sender;
-        
-        if (player.getInventory().getItemInMainHand().getType() == Material.AIR) {
-            messageUtils.sendConfigMessage(player, "messages.no-item-in-hand");
-            return;
-        }
-        
-        if (plugin.getItemBindingManager().unbindBulletFromItem(player)) {
-            messageUtils.sendConfigMessage(player, "messages.bullet-unbound");
-        } else {
-            messageUtils.sendErrorMessage(player, "解绑失败！");
-        }
     }
     
     /**
@@ -195,8 +140,12 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
 
 
         if (args.length < 3) {
-            messageUtils.sendErrorMessage(sender, "用法: /amb shoot [玩家名] <子弹名> <局部起点偏移^x,^y,^z> <局部终点偏移^x,^y,^z> [存活时间(ticks)] [速度]");
-            messageUtils.sendInfoMessage(sender, "速度为0时将创建激光效果，存活时间即激光长度");
+//            messageUtils.sendErrorMessage(sender, "Usage: /amb shoot <player> <bullet> <^x0> <^y0> <^z0> <^x1> <^y1> <^z1> <lifetime (ticks)> <velocity>");
+//            messageUtils.sendInfoMessage(sender, "Velocity = 0 indicates a laser with length of 'lifetime' and speed of the distance between two local coordinates");
+//            messageUtils.sendInfoMessage(sender, "Local coordinate format: ^x directed to the left, ^y directed upwards and ^z directed to the facing");
+            messageUtils.sendErrorMessage(sender, "Usage: /amb shoot <玩家名> <子弹名> <^x0> <^y0> <^z0> <^x1> <^y1> <^z1> <存活游戏刻> <>");
+            messageUtils.sendInfoMessage(sender, "Velocity = 0 indicates a laser with length of 'lifetime' and speed of the distance between two local coordinates");
+            messageUtils.sendInfoMessage(sender, "Local coordinate format: ^x directed to the left, ^y directed upwards and ^z directed to the facing");
             return;
         }
 
@@ -419,7 +368,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
             // 补全子命令
-            List<String> subCommands = new ArrayList<>(Arrays.asList("help", "info", "bind", "unbind", "list", "shoot"));
+            List<String> subCommands = new ArrayList<>(Arrays.asList("help", "info", "list", "shoot"));
             if (sender.hasPermission("abs01utemagicbullet.admin")) {
                 subCommands.add("reload");
             }
@@ -428,29 +377,15 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
                     completions.add(subCommand);
                 }
             }
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("bind")) {
-            // /amb bind <子弹名> 补全子弹名
-            for (String bulletName : plugin.getBulletManager().getBulletNames()) {
-                if (bulletName.toLowerCase().startsWith(args[1].toLowerCase())) {
-                    completions.add(bulletName);
-                }
-            }
         } else if (args.length == 2 && args[0].equalsIgnoreCase("shoot")) {
-            // /amb shoot [玩家名] 补全玩家名或子弹名
-            // 首先尝试补全玩家名
+            // /amb shoot <玩家名>
             for (Player player : plugin.getServer().getOnlinePlayers()) {
                 if (player.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
                     completions.add(player.getName());
                 }
             }
-            // 然后尝试补全子弹名
-            for (String bulletName : plugin.getBulletManager().getBulletNames()) {
-                if (bulletName.toLowerCase().startsWith(args[1].toLowerCase())) {
-                    completions.add(bulletName);
-                }
-            }
         } else if (args.length == 3 && args[0].equalsIgnoreCase("shoot")) {
-            // 可能是 /amb shoot <玩家名> <子弹名> 或 /amb shoot <子弹名> <起点偏移>
+            // 可能是 /amb shoot <玩家名> <子弹名>
             // 检查args[1]是否是玩家名
             if (plugin.getServer().getPlayer(args[1]) != null) {
                 // 如果是玩家名，补全子弹名

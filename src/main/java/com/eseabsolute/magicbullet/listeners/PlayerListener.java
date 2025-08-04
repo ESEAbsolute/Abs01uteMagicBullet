@@ -67,15 +67,4 @@ public class PlayerListener implements Listener {
         // 这里可以添加玩家离开时的自定义逻辑
         // 例如：保存玩家数据、清理缓存等
     }
-
-    @EventHandler
-    public void onFallingBlockChange(EntityChangeBlockEvent event) {
-        if (event.getEntity() instanceof FallingBlock) {
-            FallingBlock fb = (FallingBlock) event.getEntity();
-            if (fb.getCustomName() != null && fb.getCustomName().contains("MagicBullet")) {
-                event.setCancelled(true);
-                fb.remove();
-            }
-        }
-    }
 } 

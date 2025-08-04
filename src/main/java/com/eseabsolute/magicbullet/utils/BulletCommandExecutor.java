@@ -67,7 +67,7 @@ public class BulletCommandExecutor {
         if (onLandSection == null) return;
         
         List<String> commands = onLandSection.getStringList("commands");
-        if (commands == null || commands.isEmpty()) return;
+        if (commands.isEmpty()) return;
         
         executeCommands(commands, location, null, shooter, bulletName);
     }
@@ -90,7 +90,7 @@ public class BulletCommandExecutor {
         if (onHitSection == null) return;
         
         List<String> commands = onHitSection.getStringList("commands");
-        if (commands == null || commands.isEmpty()) return;
+        if (commands.isEmpty()) return;
         
         executeCommands(commands, location, target, shooter, bulletName);
     }

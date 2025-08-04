@@ -4,6 +4,9 @@ main: com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin
 api-version: '1.21'
 authors:
   - Sh1kaNok0
+  - Mc_HuaYan
+  - 70CentsApple
+  - ESEAbsolute
 description: Folia服务器的魔法子弹！
 folia-supported: true
 commands:

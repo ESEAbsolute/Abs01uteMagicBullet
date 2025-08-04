@@ -160,7 +160,7 @@ public class BulletManager {
             int bounceLimit = section.getInt("bounce_limit", 10);
 
 
-            boolean headshotEnabled = section.getBoolean("headshot", false);
+            boolean headshotEnabled = section.getBoolean("headshot_enabled", false);
             double headshotMultiplier = section.getDouble("headshot_multiplier", 2.0);
 
             boolean rotate = section.getBoolean("rotate", false);

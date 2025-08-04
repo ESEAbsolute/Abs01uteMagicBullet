@@ -3,6 +3,7 @@ package com.eseabsolute.magicbullet.entities;
 import com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin;
 import com.eseabsolute.magicbullet.models.BulletConfig;
 import com.eseabsolute.magicbullet.utils.BulletCommandExecutor;
+import com.eseabsolute.magicbullet.utils.HeadshotChecker;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
@@ -16,6 +17,8 @@ import org.bukkit.util.Vector;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+
+import static com.eseabsolute.magicbullet.utils.HeadshotChecker.isHeadshot;
 
 /**
  * 魔法子弹实体
@@ -744,21 +747,11 @@ public class MagicBullet {
         penetrationCount++;
         double damage = config.getDamage();
         double hitY = getCurrentLocation() != null ? getCurrentLocation().getY() : entity.getLocation().getY();
-        double headThresholdY;
-        if (config.isHeadshotEnabled()) {
-            if (entity instanceof Player player) {
-                headThresholdY = player.getEyeLocation().getY();
-            } else {
-                BoundingBox box = entity.getBoundingBox();
-                headThresholdY = box.getMaxY() - (box.getHeight() / 4.0);
-            }
-            if (hitY >= headThresholdY) {
-                damage *= config.getHeadshotMultiplier();
-                // 爆头粒子/音效
-                if (getCurrentLocation() != null) {
-                    getCurrentLocation().getWorld().spawnParticle(Particle.CRIT, getCurrentLocation(), 10, 0.2, 0.2, 0.2, 0.1);
-                    getCurrentLocation().getWorld().playSound(getCurrentLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.2f, 1.5f);
-                }
+        if (config.isHeadshotEnabled() && isHeadshot(entity, hitY)) {
+            damage *= config.getHeadshotMultiplier();
+            if (getCurrentLocation() != null) {
+                getCurrentLocation().getWorld().spawnParticle(Particle.CRIT, getCurrentLocation(), 10, 0.2, 0.2, 0.2, 0.1);
+                getCurrentLocation().getWorld().playSound(getCurrentLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.2f, 1.5f);
             }
         }
         if (config.isIgnoreArmor()) {

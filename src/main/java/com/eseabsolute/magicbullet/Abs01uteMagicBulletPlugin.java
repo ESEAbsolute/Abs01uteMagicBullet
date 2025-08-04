@@ -1,13 +1,9 @@
 package com.eseabsolute.magicbullet;
 
 import com.eseabsolute.magicbullet.commands.Abs01uteMagicBulletCommand;
-import com.eseabsolute.magicbullet.listeners.ChatListener;
-import com.eseabsolute.magicbullet.listeners.ItemUseListener;
 import com.eseabsolute.magicbullet.listeners.PlayerListener;
 import com.eseabsolute.magicbullet.managers.BulletManager;
 import com.eseabsolute.magicbullet.managers.ConfigManager;
-import com.eseabsolute.magicbullet.managers.InteractiveBindingManager;
-import com.eseabsolute.magicbullet.managers.ItemBindingManager;
 import com.eseabsolute.magicbullet.utils.MessageUtils;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -24,8 +20,6 @@ public class Abs01uteMagicBulletPlugin extends JavaPlugin {
     private ConfigManager configManager;
     private MessageUtils messageUtils;
     private BulletManager bulletManager;
-    private ItemBindingManager itemBindingManager;
-    private InteractiveBindingManager interactiveBindingManager;
     
     @Override
     public void onEnable() {
@@ -38,10 +32,6 @@ public class Abs01uteMagicBulletPlugin extends JavaPlugin {
         bulletManager.loadBullets();
         
         messageUtils = new MessageUtils(this);
-        
-        itemBindingManager = new ItemBindingManager(this);
-        
-        interactiveBindingManager = new InteractiveBindingManager(this);
         
         registerCommands();
         
@@ -84,8 +74,6 @@ public class Abs01uteMagicBulletPlugin extends JavaPlugin {
 
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
-        getServer().getPluginManager().registerEvents(new ChatListener(this), this);
-        getServer().getPluginManager().registerEvents(new ItemUseListener(this), this);
     }
     
     /**
@@ -122,24 +110,6 @@ public class Abs01uteMagicBulletPlugin extends JavaPlugin {
      */
     public BulletManager getBulletManager() {
         return bulletManager;
-    }
-    
-    /**
-     * 获取物品绑定管理器
-     * 
-     * @return 物品绑定管理器
-     */
-    public ItemBindingManager getItemBindingManager() {
-        return itemBindingManager;
-    }
-    
-    /**
-     * 获取交互式绑定管理器
-     * 
-     * @return 交互式绑定管理器
-     */
-    public InteractiveBindingManager getInteractiveBindingManager() {
-        return interactiveBindingManager;
     }
     
     /**
