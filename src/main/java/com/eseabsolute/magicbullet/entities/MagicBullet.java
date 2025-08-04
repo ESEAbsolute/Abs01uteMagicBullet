@@ -64,11 +64,7 @@ public class MagicBullet {
     private int lifeTicks = 0;
     private final int maxLifeTicks;
 
-    public MagicBullet(Abs01uteMagicBulletPlugin plugin, BulletConfig config, Player shooter, Location location, Vector velocity) {
-        this(plugin, config, shooter, location, velocity, 200); // 默认存活10秒(200ticks)
-    }
-
-    public MagicBullet(Abs01uteMagicBulletPlugin plugin, BulletConfig config, Player shooter, Location location, Vector velocity, int maxLifeTicks) {
+    public MagicBullet(Abs01uteMagicBulletPlugin plugin, BulletConfig config, Player shooter, Location location, Vector velocity, BulletType type, int maxLifeTicks) {
         this.plugin = plugin;
         this.config = config;
         this.shooter = shooter;
@@ -77,7 +73,7 @@ public class MagicBullet {
         this.commandExecutor = new BulletCommandExecutor(plugin);
         this.maxLifeTicks = maxLifeTicks;
 
-        boolean isLaserMode = velocity.length() >= 20;
+        boolean isLaserMode = (type == BulletType.LASER);
         if (isLaserMode) {
             Vector direction = velocity.clone().normalize();
             double maxDistance = maxLifeTicks;
