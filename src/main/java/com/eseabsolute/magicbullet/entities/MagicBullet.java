@@ -4,9 +4,8 @@ import com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin;
 import com.eseabsolute.magicbullet.entities.properties.BulletType;
 import com.eseabsolute.magicbullet.entities.properties.BulletData;
 import com.eseabsolute.magicbullet.utils.BulletCommandExecutor;
+import com.eseabsolute.magicbullet.utils.EntityRayTraceResult;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Predicate;
-import io.papermc.paper.math.Position;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
@@ -43,7 +42,7 @@ public class MagicBullet {
 
     private List<Integer> flyCommandTicks = null;
     private List<Integer> flyCommandIntervals = null;
-    private List<String> flyCommandCmds = null;
+    private List<String> flyCommands = null;
     private List<Integer> flyCommandMax = null;
     private List<Integer> flyCommandFired = null;
 
@@ -84,7 +83,7 @@ public class MagicBullet {
         
         flyCommandTicks = new ArrayList<>();
         flyCommandIntervals = new ArrayList<>();
-        flyCommandCmds = new ArrayList<>();
+        flyCommands = new ArrayList<>();
         flyCommandMax = new ArrayList<>();
         flyCommandFired = new ArrayList<>();
         ConfigurationSection bulletSection = plugin.getBulletManager().getBulletsConfig().getConfigurationSection("bullets." + config.getName());
@@ -114,7 +113,7 @@ public class MagicBullet {
                 if (list != null) {
                     for (Object obj : list) {
                         if (obj instanceof String) {
-                            flyCommandCmds.add((String) obj);
+                            flyCommands.add((String) obj);
                             flyCommandIntervals.add(onFlySection.getInt("interval", 20));
                             flyCommandTicks.add(0);
                             flyCommandMax.add(-1);
@@ -137,7 +136,7 @@ public class MagicBullet {
                                 } catch (Exception ignored) {
                                 }
                             }
-                            flyCommandCmds.add(cmd);
+                            flyCommands.add(cmd);
                             flyCommandIntervals.add(interval);
                             flyCommandTicks.add(0);
                             flyCommandMax.add(max);
@@ -295,8 +294,6 @@ public class MagicBullet {
 
         RayTraceResult rayResult = performPreciseRayTrace(initialLocation, direction, maxDistance);
 
-//        List<RayTraceResult> entityResults = rayTraceEntities();
-
         Location endLocation;
         if (rayResult != null && rayResult.getHitBlock() != null) {
             endLocation = rayResult.getHitPosition().toLocation(initialLocation.getWorld());
@@ -307,12 +304,20 @@ public class MagicBullet {
 
         renderLaserBeam(initialLocation, endLocation);
 
-        try {
-            checkEntitiesAlongPath(initialLocation, endLocation);
-        } catch (Exception ignored) {
+        List<EntityRayTraceResult> entityResults = rayTraceEntities(initialLocation, direction, maxDistance, 1);
+
+        for (EntityRayTraceResult entityResult : entityResults) {
+            Entity entity = entityResult.getEntity();
+            if (!(entity instanceof LivingEntity) || entity == shooter || entity == itemDisplayEntity
+                    || entity == fallingBlockEntity || entity == arrowEntity || hitEntities.contains(entity.getUniqueId())) {
+                continue;
+            }
+            handleEntityCollision((LivingEntity) entity, entityResult.getRayTraceResult().getHitPosition().toLocation(initialLocation.getWorld()));
+            if (penetrationCount >= config.getPenetration()) {
+                return;
+            }
         }
 
-        // 处理方块碰撞
         if (rayResult != null && rayResult.getHitBlock() != null) {
             handleBlockCollision(rayResult.getHitBlock());
         }
@@ -384,7 +389,7 @@ public class MagicBullet {
         return world.rayTraceBlocks(start, direction, maxDistance, FluidCollisionMode.NEVER, true);
     }
 
-    public static List<RayTraceResult> rayTraceEntities(Location start, Vector direction, double maxDistance, double raySize /* , Predicate<? super Entity> filter */) {
+    public static List<EntityRayTraceResult> rayTraceEntities(Location start, Vector direction, double maxDistance, double raySize /* , Predicate<? super Entity> filter */) {
         Preconditions.checkArgument(start != null, "Location start cannot be null");
         Preconditions.checkArgument(start.isFinite(), "Location start is not finite");
 
@@ -392,7 +397,7 @@ public class MagicBullet {
         direction.checkFinite();
 
         Preconditions.checkArgument(direction.lengthSquared() > 0, "Direction's magnitude (%s) need to be greater than 0", direction.lengthSquared());
-        List<RayTraceResult> list = new ArrayList<>();
+        List<EntityRayTraceResult> list = new ArrayList<>();
         if (maxDistance < 0.0D) {
             return list;
         }
@@ -410,70 +415,13 @@ public class MagicBullet {
             RayTraceResult hitResult = boundingBox.rayTrace(startPos, direction, maxDistance);
 
             if (hitResult != null) {
-                list.add(hitResult);
+                list.add(new EntityRayTraceResult(entity, hitResult));
             }
         }
 
-        list.sort(Comparator.comparingDouble(o -> startPos.distanceSquared(o.getHitPosition())));
+        list.sort(Comparator.comparingDouble(o -> startPos.distanceSquared(o.getRayTraceResult().getHitPosition())));
 
         return list;
-    }
-
-    private void checkEntitiesAlongPath(Location start, Location end) {
-        Vector pathVector = end.toVector().subtract(start.toVector());
-        double pathLength = pathVector.length();
-
-        // Use step method
-        double stepSize = 1.0;
-        int steps = (int) Math.ceil(pathLength / stepSize);
-
-        for (int i = 0; i <= steps; i++) {
-            double progress = Math.min(i * stepSize / pathLength, 1.0);
-            Location checkPoint = start.clone().add(pathVector.clone().multiply(progress));
-
-            double searchRadius = 2.0;
-            for (Entity entity : checkPoint.getWorld().getNearbyEntities(checkPoint, searchRadius, searchRadius, searchRadius)) {
-                if (!(entity instanceof LivingEntity) || entity == shooter || entity == itemDisplayEntity
-                        || entity == fallingBlockEntity || entity == arrowEntity || hitEntities.contains(entity.getUniqueId())) {
-                    continue;
-                }
-
-                if (isEntityInLaserPath(start, end, entity)) {
-                    handleEntityCollision((LivingEntity) entity);
-                    if (penetrationCount >= config.getPenetration()) {
-                        return;
-                    }
-                }
-            }
-        }
-    }
-
-    private boolean isEntityInLaserPath(Location start, Location end, Entity entity) {
-        Location entityLoc = entity.getLocation().add(0, entity.getHeight() / 2, 0);
-        double entityRadius = Math.max(entity.getBoundingBox().getWidthX(), entity.getBoundingBox().getWidthZ()) / 2;
-
-        double distanceToPath = distanceFromPointToLineSegment(
-                start.toVector(),
-                end.toVector(),
-                entityLoc.toVector()
-        );
-
-        return distanceToPath <= entityRadius + 0.1; // tolerance value
-    }
-
-    private double distanceFromPointToLineSegment(Vector lineStart, Vector lineEnd, Vector point) {
-        Vector lineVec = lineEnd.clone().subtract(lineStart);
-        Vector pointVec = point.clone().subtract(lineStart);
-
-        double lineLength = lineVec.lengthSquared();
-        if (lineLength == 0) {
-            return point.distance(lineStart);
-        }
-
-        double t = Math.max(0, Math.min(1, pointVec.dot(lineVec) / lineLength));
-        Vector projection = lineStart.clone().add(lineVec.multiply(t));
-
-        return point.distance(projection);
     }
 
     private boolean checkBlockCollisionBetween(Location from, Location to) {
@@ -534,7 +482,7 @@ public class MagicBullet {
             double distance = location.toVector().distance(closestPoint);
 
             if (distance <= projectileRadius) {
-                handleEntityCollision((LivingEntity) entity);
+                handleEntityCollision((LivingEntity) entity, location);
                 break;
             }
         }
@@ -555,6 +503,7 @@ public class MagicBullet {
     }
 
     private void updateEntityPosition(Location newLocation) {
+        if (getCurrentLocation() == null) return;
         moveEntityWithVelocity(newLocation.toVector().subtract(getCurrentLocation().toVector()));
     }
 
@@ -659,23 +608,26 @@ public class MagicBullet {
         }
     }
 
-    private void handleEntityCollision(LivingEntity entity) {
+    private void handleEntityCollision(LivingEntity entity, Location hitLocation) {
         hitEntities.add(entity.getUniqueId());
         penetrationCount++;
         double damage = config.getDamage();
-        double hitY = getCurrentLocation() != null ? getCurrentLocation().getY() : entity.getLocation().getY();
-        if (config.isHeadshotEnabled() && isHeadshot(entity, hitY)) {
+        if (config.isHeadshotEnabled() && isHeadshot(entity, hitLocation.y())) {
             damage *= config.getHeadshotMultiplier();
             if (getCurrentLocation() != null) {
                 getCurrentLocation().getWorld().spawnParticle(Particle.CRIT, getCurrentLocation(), 10, 0.2, 0.2, 0.2, 0.1);
                 getCurrentLocation().getWorld().playSound(getCurrentLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.2f, 1.5f);
             }
         }
+
+        // HAVE YOU IGNORED THAT
+        // DO YOU KNOW WHAT YOU ARE DOING?????
         if (config.isIgnoreArmor()) {
             entity.damage(damage, shooter);
         } else {
             entity.damage(damage, shooter);
         }
+
         if (config.getPhysics() != null) {
             Vector knockback = velocity.clone().normalize().multiply(config.getPhysics().getKnockback());
             entity.setVelocity(entity.getVelocity().add(knockback));
@@ -855,16 +807,16 @@ public class MagicBullet {
                 double hearingRange = Math.min(radius * 2.5, 30);
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     if (player.getWorld().equals(location.getWorld()) && player.getLocation()
-                                                                               .distance(location) <= hearingRange && player
+                            .distance(location) <= hearingRange && player
                             .getLocation().distance(location) > radius) {
                         float distanceVolume = (float) (volume * (1 - player.getLocation()
-                                                                            .distance(location) / hearingRange));
+                                .distance(location) / hearingRange));
                         if (distanceVolume > 0.1f) {
                             player.playSound(player.getLocation(), sound, distanceVolume, pitch);
                         }
                     }
                 }
-            } catch (IllegalArgumentException e) {
+            } catch (IllegalArgumentException ignored) {
                 plugin.getLogger().warning("无效的爆炸音效: " + explosion.getSound() + "，不播放音效");
             }
         }
@@ -898,7 +850,7 @@ public class MagicBullet {
             try {
                 Sound sound = Sound.valueOf(soundConfig.getSound().toUpperCase());
                 location.getWorld().playSound(location, sound, soundConfig.getVolume(), soundConfig.getPitch());
-            } catch (IllegalArgumentException e) {
+            } catch (IllegalArgumentException ignored) {
                 plugin.getLogger().warning("无效的射击音效: " + soundConfig.getSound() + "，不播放音效");
             }
         }
@@ -906,8 +858,8 @@ public class MagicBullet {
 
     private void executeOnFlyCommands(Location location) {
         if (isDead) return;
-        if (flyCommandCmds == null || flyCommandCmds.isEmpty()) return;
-        for (int i = 0; i < flyCommandCmds.size(); i++) {
+        if (flyCommands == null || flyCommands.isEmpty()) return;
+        for (int i = 0; i < flyCommands.size(); i++) {
             int tick = flyCommandTicks.get(i) + 1;
             flyCommandTicks.set(i, tick);
             int interval = flyCommandIntervals.get(i);
@@ -915,7 +867,7 @@ public class MagicBullet {
             int fired = flyCommandFired.get(i);
             if (max >= 0 && fired >= max) continue;
             if (interval > 0 && tick % interval == 0) {
-                commandExecutor.executeCommands(java.util.Collections.singletonList(flyCommandCmds.get(i)), location, null, shooter, config.getName());
+                commandExecutor.executeCommands(java.util.Collections.singletonList(flyCommands.get(i)), location, null, shooter, config.getName());
                 flyCommandFired.set(i, fired + 1);
             }
         }

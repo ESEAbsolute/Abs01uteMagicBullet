@@ -126,7 +126,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             // TODO rewrite command help
             messageUtils.sendErrorMessage(sender, "Usage & Sample:");
             messageUtils.sendErrorMessage(sender, "/amb shoot Player Bullet BulletType BulletShape LifeTicks LaunchPositionOffsetVectorType x1 y1 z1 VelocityVectorType x2 y2 z2");
-            messageUtils.sendErrorMessage(sender, "/amb shoot ESEAbsolute Example_bullet PROJECTILE NORMAL 2000 LOCAL 0 0 0 LOCAL 0 0 1");
+            messageUtils.sendErrorMessage(sender, "/amb shoot ESEAbsolute Example_bullet PROJECTILE SINGLE 2000 LOCAL 0 0 0 LOCAL 0 0 1");
             messageUtils.sendInfoMessage(sender, "Local coordinate format: ^x directed to the left, ^y directed upwards and ^z directed to the facing");
             return;
         }
@@ -307,6 +307,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
                             .toList();
                     break;
                 case 6: // [5] LifeTicks
+                    completions.add("<LifeTicks:20~6000>");
                     break;
                 case 7: // [6] Launch Coordinate Vector Type
                     completions = CoordinateType.getAllTypes().stream()
@@ -314,10 +315,13 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
                             .toList();
                     break;
                 case 8: // [7] ~ [9] Launch Coordinate
+                    completions.add( (args[6].equalsIgnoreCase("LOCAL")) ? "<ΔXlocal>" : "<ΔX>" );
                     break;
                 case 9: // [7] ~ [9] Launch Coordinate
+                    completions.add( (args[6].equalsIgnoreCase("LOCAL")) ? "<ΔYlocal>" : "<ΔY>" );
                     break;
                 case 10: // [7] ~ [9] Launch Coordinate
+                    completions.add( (args[6].equalsIgnoreCase("LOCAL")) ? "<ΔZlocal>" : "<ΔZ>" );
                     break;
                 case 11: // [10] Velocity Vector Type
                     completions = CoordinateType.getAllTypes().stream()
@@ -325,10 +329,13 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
                             .toList();
                     break;
                 case 12: // [11] ~ [13] Velocity Vector
+                    completions.add( (args[10].equalsIgnoreCase("LOCAL")) ? "<ΔXlocal>" : "<ΔX>" );
                     break;
                 case 13: // [11] ~ [13] Velocity Vector
+                    completions.add( (args[10].equalsIgnoreCase("LOCAL")) ? "<ΔYlocal>" : "<ΔY>" );
                     break;
                 case 14: // [11] ~ [13] Velocity Vector
+                    completions.add( (args[10].equalsIgnoreCase("LOCAL")) ? "<ΔZlocal>" : "<ΔZ>" );
                     break;
                 default:
                     break;
