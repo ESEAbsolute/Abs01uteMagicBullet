@@ -4,6 +4,9 @@ import com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin;
 import com.eseabsolute.magicbullet.entities.properties.BulletType;
 import com.eseabsolute.magicbullet.entities.properties.BulletData;
 import com.eseabsolute.magicbullet.utils.BulletCommandExecutor;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
+import io.papermc.paper.math.Position;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
@@ -292,6 +295,8 @@ public class MagicBullet {
 
         RayTraceResult rayResult = performPreciseRayTrace(initialLocation, direction, maxDistance);
 
+//        List<RayTraceResult> entityResults = rayTraceEntities();
+
         Location endLocation;
         if (rayResult != null && rayResult.getHitBlock() != null) {
             endLocation = rayResult.getHitPosition().toLocation(initialLocation.getWorld());
@@ -377,6 +382,41 @@ public class MagicBullet {
         if (world == null) return null;
 
         return world.rayTraceBlocks(start, direction, maxDistance, FluidCollisionMode.NEVER, true);
+    }
+
+    public static List<RayTraceResult> rayTraceEntities(Location start, Vector direction, double maxDistance, double raySize /* , Predicate<? super Entity> filter */) {
+        Preconditions.checkArgument(start != null, "Location start cannot be null");
+        Preconditions.checkArgument(start.isFinite(), "Location start is not finite");
+
+        Preconditions.checkArgument(direction != null, "Vector direction cannot be null");
+        direction.checkFinite();
+
+        Preconditions.checkArgument(direction.lengthSquared() > 0, "Direction's magnitude (%s) need to be greater than 0", direction.lengthSquared());
+        List<RayTraceResult> list = new ArrayList<>();
+        if (maxDistance < 0.0D) {
+            return list;
+        }
+
+        World world = start.getWorld();
+
+        Vector startPos = start.toVector();
+        Vector dir = direction.clone().normalize().multiply(maxDistance);
+        BoundingBox aabb = BoundingBox.of(startPos, startPos).expandDirectional(dir).expand(raySize);
+        Collection<Entity> entities = world.getNearbyEntities(aabb);
+//        Collection<Entity> entities = world.getNearbyEntities(aabb, filter);
+
+        for (Entity entity : entities) {
+            BoundingBox boundingBox = entity.getBoundingBox().expand(raySize);
+            RayTraceResult hitResult = boundingBox.rayTrace(startPos, direction, maxDistance);
+
+            if (hitResult != null) {
+                list.add(hitResult);
+            }
+        }
+
+        list.sort(Comparator.comparingDouble(o -> startPos.distanceSquared(o.getHitPosition())));
+
+        return list;
     }
 
     private void checkEntitiesAlongPath(Location start, Location end) {
