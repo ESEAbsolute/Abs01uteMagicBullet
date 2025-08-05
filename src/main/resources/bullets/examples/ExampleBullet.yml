@@ -1,0 +1,93 @@
+model_type: "item"
+item: "diamond"
+block: "diamond_block"
+particle: "angry_villager"
+damage: 5
+ignore_armor: false
+penetration: 1
+cooldown: 1.0           # 子弹冷却（秒）
+max-range: 100.0        # 最大射程
+bounce_limit: 3         # 最大弹射次数
+shoot_sound:
+  enabled: true         # 是否启用射击音效
+  sound: "BLOCK_AMETHYST_BLOCK_CHIME"  # 射击音效
+  volume: 1.0           # 音效音量
+  pitch: 1.0            # 音效音调
+explosion:
+  enabled: true         # 是否启用爆炸
+  radius: 3.0           # 爆炸半径
+  damage: 8             # 爆炸伤害
+  particle: "snowflake" # 爆炸粒子
+  sound: "ENTITY_GENERIC_EXPLODE" # 爆炸音效
+  sound_volume: 2.0     # 爆炸音效音量
+  sound_pitch: 1.0      # 爆炸音效音调
+  particle_count: 20    # 爆炸粒子数量
+  particle_spread: 0.5  # 爆炸粒子扩散范围
+physics:
+  gravity: 0.1
+  knockback: 1.5
+  bounce: true
+headshot_enabled: true        # 是否启用爆头机制
+headshot_multiplier: 10      # 爆头伤害倍率
+
+
+
+# ===============================
+# 参考资料
+# ===============================
+#
+# 【粒子类型】常用选项:
+# - flame: 火焰粒子
+# - soul_fire_flame: 灵魂火焰
+# - smoke: 烟雾
+# - large_smoke: 大烟雾
+# - electric_spark: 电火花
+# - end_rod: 末地烛粒子
+# - dragon_breath: 龙息
+# - heart: 爱心
+# - portal: 传送门
+# - enchant: 附魔台
+# - snowflake: 雪花
+# - explosion: 爆炸
+# - explosion_large: 大爆炸
+# - damage_indicator: 伤害指示器
+# - sonic_boom: 音爆
+# - sculk_soul: 幽匿灵魂
+# - glow: 发光粒子
+# - firework: 烟花
+# - angry_villager: 愤怒村民
+# - happy_villager: 开心村民
+# - crit: 暴击粒子
+# - note: 音符
+# - lava: 熔岩
+# - water_splash: 水花
+#
+# 【音效类型】常用选项:
+# - ENTITY_ARROW_SHOOT: 射箭声
+# - ENTITY_BLAZE_SHOOT: 烈焰人射击
+# - BLOCK_AMETHYST_BLOCK_CHIME: 紫水晶共鸣
+# - ENTITY_GENERIC_EXPLODE: 爆炸声
+# - ENTITY_LIGHTNING_BOLT_IMPACT: 雷击声
+# - ENTITY_PLAYER_ATTACK_CRIT: 暴击声
+# - ENTITY_DRAGON_FIREBALL_EXPLODE: 龙火球爆炸
+# - ENTITY_ENDERMAN_TELEPORT: 末影人传送
+# - ENTITY_PHANTOM_BITE: 幻翼咬人
+# - ENTITY_WITHER_SHOOT: 凋灵射击
+# - BLOCK_ENCHANTMENT_TABLE_USE: 附魔台使用
+# - BLOCK_BELL_USE: 钟声
+# - BLOCK_BEACON_ACTIVATE: 信标激活
+# - BLOCK_NOTE_BLOCK_PLING: 音符盒清脆声
+# - ENTITY_PLAYER_LEVELUP: 升级声
+# - ENTITY_WARDEN_SONIC_BOOM: 监守者音爆
+#
+# 【命令前缀】可选项:
+# - player: 以玩家身份执行命令
+# - server: 以控制台身份执行命令
+# - op: 临时给予玩家OP权限执行命令
+#
+# 【命令变量】可用变量:
+# - %player_name%: 射击玩家名称
+# - %exact_x%, %exact_y%, %exact_z%: 子弹精确位置坐标
+# - %target_name%: 被击中目标名称
+# - %target_x%, %target_y%, %target_z%: 被击中目标位置
+# - %target_eye_y%: 被击中目标眼睛高度

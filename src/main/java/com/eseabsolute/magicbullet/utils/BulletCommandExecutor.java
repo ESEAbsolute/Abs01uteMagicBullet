@@ -3,6 +3,7 @@ package com.eseabsolute.magicbullet.utils;
 import com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.configuration.ConfigurationSection;
@@ -33,19 +34,18 @@ public class BulletCommandExecutor {
      */
     public void executeOnFlyCommands(String bulletName, Location location, Player shooter, int tick) {
         if (location == null || bulletName == null) return;
+
+        YamlConfiguration configuration = plugin.getBulletManager().getBullet(bulletName).getRawConfiguration();
+        if (configuration == null) return;
         
-        // 获取子弹飞行命令配置（从bullets.yml读取）
-        ConfigurationSection bulletSection = plugin.getBulletManager().getBulletsConfig().getConfigurationSection("bullets." + bulletName);
-        if (bulletSection == null) return;
-        
-        ConfigurationSection onFlySection = bulletSection.getConfigurationSection("on_fly");
+        ConfigurationSection onFlySection = configuration.getConfigurationSection("on_fly");
         if (onFlySection == null) return;
         
         int interval = onFlySection.getInt("interval", 20);
         if (tick % interval != 0) return;
         
         List<String> commands = onFlySection.getStringList("commands");
-        if (commands == null || commands.isEmpty()) return;
+        if (commands.isEmpty()) return;
         
         executeCommands(commands, location, null, shooter, bulletName);
     }
@@ -58,12 +58,11 @@ public class BulletCommandExecutor {
      */
     public void executeOnLandCommands(String bulletName, Location location, Player shooter) {
         if (location == null || bulletName == null) return;
+
+        YamlConfiguration configuration = plugin.getBulletManager().getBullet(bulletName).getRawConfiguration();
+        if (configuration == null) return;
         
-        // 获取子弹落地命令配置（从bullets.yml读取）
-        ConfigurationSection bulletSection = plugin.getBulletManager().getBulletsConfig().getConfigurationSection("bullets." + bulletName);
-        if (bulletSection == null) return;
-        
-        ConfigurationSection onLandSection = bulletSection.getConfigurationSection("on_land");
+        ConfigurationSection onLandSection = configuration.getConfigurationSection("on_land");
         if (onLandSection == null) return;
         
         List<String> commands = onLandSection.getStringList("commands");
@@ -81,12 +80,11 @@ public class BulletCommandExecutor {
      */
     public void executeOnHitCommands(String bulletName, Location location, LivingEntity target, Player shooter) {
         if (location == null || bulletName == null || target == null) return;
+
+        YamlConfiguration configuration = plugin.getBulletManager().getBullet(bulletName).getRawConfiguration();
+        if (configuration == null) return;
         
-        // 获取子弹命中命令配置（从bullets.yml读取）
-        ConfigurationSection bulletSection = plugin.getBulletManager().getBulletsConfig().getConfigurationSection("bullets." + bulletName);
-        if (bulletSection == null) return;
-        
-        ConfigurationSection onHitSection = bulletSection.getConfigurationSection("on_hit");
+        ConfigurationSection onHitSection = configuration.getConfigurationSection("on_hit");
         if (onHitSection == null) return;
         
         List<String> commands = onHitSection.getStringList("commands");

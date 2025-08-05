@@ -1,0 +1,33 @@
+model_type: "arrow"      # 箭矢类型子弹（注意：箭矢不再支持插在方块上的功能）
+item: "arrow"
+block: "arrow"
+shoot_sound:
+  enabled: true
+  sound: "ENTITY_ARROW_SHOOT"
+  volume: 1.0
+  pitch: 1.2
+particle_preset:
+  type: "spiral"           # 粒子预设类型：spiral（实体环绕）
+  particle: "flame"        # 粒子类型
+  radius: 0.3               # 环绕半径（单位：格）
+  count: 4                  # 每圈粒子数
+  rotate_speed: 0.3        # 每tick旋转弧度（越大越快，建议0.1~1.0）
+  density: 8              # 每tick插值次数，越大越密，建议4~12
+damage: 7
+cooldown: 1.0
+max-range: 80.0
+bounce_limit: 1
+explosion:
+  enabled: true
+  radius: 1.0
+  damage: 5
+  particle: "flame"
+  sound: "ENTITY_ARROW_HIT_PLAYER"
+  sound_volume: 1.8
+  sound_pitch: 1.1
+  particle_count: 15
+  particle_spread: 0.3
+physics:
+  gravity: 0.05
+  knockback: 1.0
+  bounce: true

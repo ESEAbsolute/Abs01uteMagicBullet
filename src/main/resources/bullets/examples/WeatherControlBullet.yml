@@ -1,0 +1,34 @@
+model_type: "item"
+item: "clock"
+block: "gold_block"
+particle: "cloud"
+damage: 5
+ignore_armor: false
+penetration: 1
+cooldown: 3.0
+max-range: 50.0
+bounce_limit: 0
+# 飞行时命令配置
+on_fly:
+  interval: 10
+  commands:
+    - "weather clear"  # 切换为晴天
+# 落地时命令配置
+on_land:
+  commands:
+    - "time set day"  # 设置为白天
+# 命中时命令配置
+on_hit:
+  commands:
+    - "time set night"  # 设置为黑夜
+shoot_sound:
+  enabled: true
+  sound: "BLOCK_BELL_USE"
+  volume: 1.0
+  pitch: 1.2
+explosion:
+  enabled: false
+physics:
+  gravity: 0.05
+  knockback: 0.5
+  bounce: false

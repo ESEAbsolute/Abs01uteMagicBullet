@@ -1,0 +1,23 @@
+model_type: "block"
+item: "fire_charge"
+block: "redstone_block"
+particle: "flame"
+damage: 8
+ignore_armor: true
+penetration: 2
+shoot_sound:
+  enabled: true
+  sound: "ENTITY_BLAZE_SHOOT"
+  volume: 1.2
+  pitch: 0.8
+explosion:
+  radius: 2.0
+  damage: 12
+  particle: "large_explosion"
+  sound: "ENTITY_DRAGON_FIREBALL_EXPLODE"
+  sound_volume: 2.5
+  sound_pitch: 0.8
+physics:
+  gravity: 0.05
+  knockback: 2.0
+  bounce: false

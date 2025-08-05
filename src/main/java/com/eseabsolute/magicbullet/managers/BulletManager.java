@@ -7,20 +7,21 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.File;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
-import java.util.List;
 
-/**
- * 子弹管理器
- * 负责加载和管理子弹配置
- * 
- * @author EseAbsolute
- * @version 1.0.0
- */
 public class BulletManager {
-    
+    private final String[] sampleFiles = {
+            "bullets/FullExampleBullet.yml",
+            "bullets/examples/ExampleBullet.yml",
+            "bullets/examples/FireBullet.yml",
+            "bullets/examples/LightningBullet.yml",
+            "bullets/examples/LightningBulletSimplified.yml",
+            "bullets/examples/SpiralArrow.yml",
+            "bullets/examples/TrialArrow.yml",
+            "bullets/examples/WeatherControlBullet.yml"
+    };
+
     private final Abs01uteMagicBulletPlugin plugin;
     private final Map<String, BulletData> bullets = new HashMap<>();
     private YamlConfiguration bulletsConfig; // 新增成员变量
@@ -28,63 +29,77 @@ public class BulletManager {
     public BulletManager(Abs01uteMagicBulletPlugin plugin) {
         this.plugin = plugin;
     }
-    
 
     public void loadBullets() {
         bullets.clear();
-        File bulletsFile = new File(plugin.getDataFolder(), "bullets.yml");
-        if (!bulletsFile.exists()) {
-            plugin.saveResource("bullets.yml", false);
+        File bulletsDirectory = new File(plugin.getDataFolder(), "bullets");
+
+        if (!bulletsDirectory.exists()) {
+            for (String path : sampleFiles) {
+                plugin.saveResource(path, false);
+            }
         }
-        bulletsConfig = YamlConfiguration.loadConfiguration(bulletsFile); // 保存对象
-        ConfigurationSection bulletsSection = bulletsConfig.getConfigurationSection("bullets");
-        
-        if (bulletsSection == null) {
-            plugin.getLogger().warning("未找到 bullets.yml 中的 bullets 配置部分！");
-            return;
-        }
-        
-        for (String bulletName : bulletsSection.getKeys(false)) {
+
+        List<File> bulletConfigurations = getAllYamlFiles(bulletsDirectory);
+
+        for (File bulletConfiguration : bulletConfigurations) {
+            YamlConfiguration configuration = YamlConfiguration.loadConfiguration(bulletConfiguration);
             try {
-                BulletData bullet = loadBullet(bulletName, bulletsSection.getConfigurationSection(bulletName));
+                String bulletName = bulletConfiguration.getName().replaceFirst("\\.yml$", "");
+                BulletData bullet = loadBullet(bulletName, configuration);
                 if (bullet != null) {
                     bullets.put(bulletName, bullet);
                     plugin.getLogger().info("成功加载子弹配置: " + bulletName);
                 }
             } catch (Exception e) {
-                plugin.getLogger().log(Level.SEVERE, "加载子弹配置失败: " + bulletName, e);
+                plugin.getLogger().log(Level.SEVERE, "加载子弹配置失败: " + bulletConfiguration.getName(), e);
             }
         }
-        
-        plugin.getLogger().info("共加载了 " + bullets.size() + " 个子弹配置");
+    }
+
+    private List<File> getAllYamlFiles(File directory) {
+        List<File> yamlFiles = new ArrayList<>();
+        File[] files = directory.listFiles();
+
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    yamlFiles.addAll(getAllYamlFiles(file));
+                } else if (file.getName().toLowerCase().endsWith(".yml")) {
+                    yamlFiles.add(file);
+                }
+            }
+        }
+
+        return yamlFiles;
     }
     
 
-    private BulletData loadBullet(String name, ConfigurationSection section) {
-        if (section == null) {
+    private BulletData loadBullet(String name, YamlConfiguration configuration) {
+        if (configuration == null) {
             return null;
         }
         
         try {
 
-            String modelType = section.getString("model_type", "item");
-            String item = section.getString("item", "STONE");
-            String block = section.getString("block", "STONE");
+            String modelType = configuration.getString("model_type", "item");
+            String item = configuration.getString("item", "STONE");
+            String block = configuration.getString("block", "STONE");
             Particle particle = null;
             
             try {
-                particle = Particle.valueOf(section.getString("particle", "SMOKE").toUpperCase());
+                particle = Particle.valueOf(configuration.getString("particle", "SMOKE").toUpperCase());
             } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("无效的粒子类型: " + section.getString("particle") + "，使用默认粒子");
+                plugin.getLogger().warning("无效的粒子类型: " + configuration.getString("particle") + "，使用默认粒子");
                 particle = Particle.SMOKE;
             }
             
-            double damage = section.getDouble("damage", 5.0);
-            boolean ignoreArmor = section.getBoolean("ignore_armor", false);
-            int penetration = section.getInt("penetration", 1);
+            double damage = configuration.getDouble("damage", 5.0);
+            boolean ignoreArmor = configuration.getBoolean("ignore_armor", false);
+            int penetration = configuration.getInt("penetration", 1);
             
 
-            ConfigurationSection explosionSection = section.getConfigurationSection("explosion");
+            ConfigurationSection explosionSection = configuration.getConfigurationSection("explosion");
             BulletData.ExplosionConfig explosion = null;
             if (explosionSection != null) {
                 boolean enabled = explosionSection.getBoolean("enabled", true);
@@ -108,7 +123,7 @@ public class BulletManager {
             }
             
 
-            ConfigurationSection physicsSection = section.getConfigurationSection("physics");
+            ConfigurationSection physicsSection = configuration.getConfigurationSection("physics");
             BulletData.PhysicsConfig physics = null;
             if (physicsSection != null) {
                 double gravity = physicsSection.getDouble("gravity", 0.1);
@@ -119,7 +134,7 @@ public class BulletManager {
             
 
             BulletData.ParticlePresetConfig particlePreset = null;
-            ConfigurationSection presetSection = section.getConfigurationSection("particle_preset");
+            ConfigurationSection presetSection = configuration.getConfigurationSection("particle_preset");
             if (presetSection != null) {
                 String presetType = presetSection.getString("type", "spiral");
                 Particle presetParticle;
@@ -141,7 +156,7 @@ public class BulletManager {
             
 
             BulletData.ShootSoundConfig shootSound = null;
-            ConfigurationSection soundSection = section.getConfigurationSection("shoot_sound");
+            ConfigurationSection soundSection = configuration.getConfigurationSection("shoot_sound");
             if (soundSection != null) {
                 boolean enabled = soundSection.getBoolean("enabled", true);
                 String sound = soundSection.getString("sound", "ENTITY_ARROW_SHOOT");
@@ -149,63 +164,62 @@ public class BulletManager {
                 float pitch = (float) soundSection.getDouble("pitch", 1.0);
                 shootSound = new BulletData.ShootSoundConfig(enabled, sound, volume, pitch);
             } else {
-
                 shootSound = new BulletData.ShootSoundConfig(true, "ENTITY_ARROW_SHOOT", 1.0f, 1.0f);
             }
             
 
-            double cooldown = section.getDouble("cooldown", plugin.getConfig().getDouble("features.magic-bullet.cooldown", 1.0));
-            double maxRange = section.getDouble("max-range", plugin.getConfig().getDouble("features.magic-bullet.max-range", 100.0));
-            int bounceLimit = section.getInt("bounce_limit", 10);
+            double cooldown = configuration.getDouble("cooldown", plugin.getConfig().getDouble("features.magic-bullet.cooldown", 1.0));
+            double maxRange = configuration.getDouble("max-range", plugin.getConfig().getDouble("features.magic-bullet.max-range", 100.0));
+            int bounceLimit = configuration.getInt("bounce_limit", 10);
 
 
-            boolean headshotEnabled = section.getBoolean("headshot_enabled", false);
-            double headshotMultiplier = section.getDouble("headshot_multiplier", 2.0);
+            boolean headshotEnabled = configuration.getBoolean("headshot_enabled", false);
+            double headshotMultiplier = configuration.getDouble("headshot_multiplier", 2.0);
 
-            boolean rotate = section.getBoolean("rotate", false);
+            boolean rotate = configuration.getBoolean("rotate", false);
 
 
-            ConfigurationSection onFlySection = section.getConfigurationSection("on_fly");
+            ConfigurationSection onFlySection = configuration.getConfigurationSection("on_fly");
             if (onFlySection != null) {
                 List<String> commands = onFlySection.getStringList("commands");
-                if (commands != null && !commands.isEmpty()) {
+                if (!commands.isEmpty()) {
                     plugin.getLogger().info("子弹 " + name + " 加载了 " + commands.size() + " 个飞行命令");
                 }
             }
             
 
-            ConfigurationSection onLandSection = section.getConfigurationSection("on_land");
+            ConfigurationSection onLandSection = configuration.getConfigurationSection("on_land");
             if (onLandSection != null) {
                 List<String> commands = onLandSection.getStringList("commands");
-                if (commands != null && !commands.isEmpty()) {
+                if (!commands.isEmpty()) {
                     plugin.getLogger().info("子弹 " + name + " 加载了 " + commands.size() + " 个落地命令");
                 }
             }
             
 
-            ConfigurationSection onHitSection = section.getConfigurationSection("on_hit");
+            ConfigurationSection onHitSection = configuration.getConfigurationSection("on_hit");
             if (onHitSection != null) {
                 List<String> commands = onHitSection.getStringList("commands");
-                if (commands != null && !commands.isEmpty()) {
+                if (!commands.isEmpty()) {
                     plugin.getLogger().info("子弹 " + name + " 加载了 " + commands.size() + " 个命中命令");
                 }
             }
 
-            return new BulletData(name, modelType, item, block, particle, damage, ignoreArmor, penetration, explosion, physics, cooldown, maxRange, bounceLimit, particlePreset, shootSound, headshotEnabled, headshotMultiplier, rotate);
+            return new BulletData(name, modelType, item, block, particle, damage, ignoreArmor,
+                    penetration, explosion, physics, cooldown, maxRange, bounceLimit, particlePreset,
+                    shootSound, headshotEnabled, headshotMultiplier, rotate, configuration);
             
         } catch (Exception e) {
             plugin.getLogger().severe("子弹配置错误 " + name + ": " + e.getMessage());
             return null;
         }
     }
-    
 
     public BulletData getBullet(String name) {
         return bullets.get(name);
     }
-    
 
-    public java.util.Set<String> getBulletNames() {
+    public Set<String> getBulletNames() {
         return bullets.keySet();
     }
     
@@ -217,10 +231,5 @@ public class BulletManager {
 
     public void reloadBullets() {
         loadBullets();
-    }
-
-
-    public YamlConfiguration getBulletsConfig() {
-        return bulletsConfig;
     }
 } 

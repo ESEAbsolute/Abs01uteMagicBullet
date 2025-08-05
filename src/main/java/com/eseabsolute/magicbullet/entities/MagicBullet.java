@@ -9,6 +9,7 @@ import com.google.common.base.Preconditions;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.*;
 import org.bukkit.entity.Display.Billboard;
 import org.bukkit.inventory.ItemStack;
@@ -23,7 +24,7 @@ import static com.eseabsolute.magicbullet.utils.HeadshotChecker.isHeadshot;
 public class MagicBullet {
 
     private final Abs01uteMagicBulletPlugin plugin;
-    private final BulletData config;
+    private final BulletData bulletData;
     private final BulletType type;
     private final Player shooter;
     private final Vector velocity;
@@ -51,9 +52,9 @@ public class MagicBullet {
     private int lifeTicks = 0;
     private final int maxLifeTicks;
 
-    public MagicBullet(Abs01uteMagicBulletPlugin plugin, BulletData config, Player shooter, Location location, Vector velocity, BulletType type, int maxLifeTicks) {
+    public MagicBullet(Abs01uteMagicBulletPlugin plugin, BulletData bulletData, Player shooter, Location location, Vector velocity, BulletType type, int maxLifeTicks) {
         this.plugin = plugin;
-        this.config = config;
+        this.bulletData = bulletData;
         this.shooter = shooter;
         this.type = type;
         this.velocity = velocity.clone();
@@ -86,10 +87,9 @@ public class MagicBullet {
         flyCommands = new ArrayList<>();
         flyCommandMax = new ArrayList<>();
         flyCommandFired = new ArrayList<>();
-        ConfigurationSection bulletSection = plugin.getBulletManager().getBulletsConfig().getConfigurationSection("bullets." + config.getName());
-        if (bulletSection != null) {
-
-            ConfigurationSection onShootSection = bulletSection.getConfigurationSection("on_shoot");
+        YamlConfiguration configuration = bulletData.getRawConfiguration();
+        if (configuration != null) {
+            ConfigurationSection onShootSection = configuration.getConfigurationSection("on_shoot");
             if (onShootSection != null && onShootSection.isList("commands")) {
                 List<?> shootCmds = onShootSection.getList("commands");
                 List<String> shootCmdList = new ArrayList<>();
@@ -103,11 +103,11 @@ public class MagicBullet {
                     }
                 }
                 if (!shootCmdList.isEmpty()) {
-                    commandExecutor.executeCommands(shootCmdList, location, null, shooter, config.getName());
+                    commandExecutor.executeCommands(shootCmdList, location, null, shooter, this.bulletData.getName());
                 }
             }
 
-            ConfigurationSection onFlySection = bulletSection.getConfigurationSection("on_fly");
+            ConfigurationSection onFlySection = configuration.getConfigurationSection("on_fly");
             if (onFlySection != null && onFlySection.isList("commands")) {
                 List<?> list = onFlySection.getList("commands");
                 if (list != null) {
@@ -150,7 +150,7 @@ public class MagicBullet {
 
 
     private void createBulletEntity(Location location) {
-        String modelType = config.getModel();
+        String modelType = bulletData.getModel();
         boolean isLaserMode = (type == BulletType.LASER);
         if ("block".equalsIgnoreCase(modelType)) {
             createBlockBullet(location, isLaserMode);
@@ -163,7 +163,7 @@ public class MagicBullet {
 
 
     private void createBlockBullet(Location location, boolean invisible) {
-        Material blockMaterial = Material.valueOf(config.getBlock().toUpperCase());
+        Material blockMaterial = Material.valueOf(bulletData.getBlock().toUpperCase());
         plugin.getServer().getRegionScheduler().execute(plugin, location, () -> {
             try {
                 fallingBlockEntity = location.getWorld().spawnFallingBlock(location, blockMaterial.createBlockData());
@@ -185,7 +185,7 @@ public class MagicBullet {
 
     private void createItemBullet(Location location, boolean invisible) {
         try {
-            final ItemStack itemStack = new ItemStack(Material.valueOf(config.getItem().toUpperCase()));
+            final ItemStack itemStack = new ItemStack(Material.valueOf(bulletData.getItem().toUpperCase()));
             plugin.getServer().getRegionScheduler().execute(plugin, location, () -> {
                 try {
                     itemDisplayEntity = location.getWorld().spawn(location, ItemDisplay.class, display -> {
@@ -210,7 +210,7 @@ public class MagicBullet {
                 }
             });
         } catch (IllegalArgumentException e) {
-            plugin.getLogger().warning("无效的物品材料: " + config.getItem());
+            plugin.getLogger().warning("无效的物品材料: " + bulletData.getItem());
             final ItemStack defaultItem = new ItemStack(Material.STONE);
             plugin.getServer().getRegionScheduler().execute(plugin, location, () -> {
                 try {
@@ -313,7 +313,7 @@ public class MagicBullet {
                 continue;
             }
             handleEntityCollision((LivingEntity) entity, entityResult.getRayTraceResult().getHitPosition().toLocation(initialLocation.getWorld()));
-            if (penetrationCount >= config.getPenetration()) {
+            if (penetrationCount >= bulletData.getPenetration()) {
                 return;
             }
         }
@@ -466,7 +466,7 @@ public class MagicBullet {
     }
 
     private void checkEntityCollisionAtPosition(Location location) {
-        double checkRange = "arrow".equalsIgnoreCase(config.getModel()) ? 1.5 : 1.3;
+        double checkRange = "arrow".equalsIgnoreCase(bulletData.getModel()) ? 1.5 : 1.3;
 
         for (Entity entity : location.getWorld().getNearbyEntities(location, checkRange, checkRange * 1.5, checkRange)) {
 
@@ -489,13 +489,13 @@ public class MagicBullet {
     }
 
     private void applyGravity() {
-        if (config.getPhysics() != null && config.getPhysics().getGravity() > 0) {
-            velocity.add(new Vector(0, -config.getPhysics().getGravity(), 0));
+        if (bulletData.getPhysics() != null && bulletData.getPhysics().getGravity() > 0) {
+            velocity.add(new Vector(0, -bulletData.getPhysics().getGravity(), 0));
         }
     }
 
     private void applyRotation() {
-        if (fallingBlockEntity != null && config.isRotate()) {
+        if (fallingBlockEntity != null && bulletData.isRotate()) {
             float yaw = fallingBlockEntity.getLocation().getYaw() + 15f;
             float pitch = fallingBlockEntity.getLocation().getPitch();
             fallingBlockEntity.setRotation(yaw, pitch);
@@ -509,7 +509,7 @@ public class MagicBullet {
 
     private void checkMaxRange(Location currentLocation) {
         double distance = currentLocation.distance(shooter.getLocation());
-        if (distance > config.getMaxRange()) {
+        if (distance > bulletData.getMaxRange()) {
             destroy();
         }
     }
@@ -546,10 +546,10 @@ public class MagicBullet {
 
     private void handleBlockCollision(Block block) {
         // Make arrows destroy when touching a block instead of sticking into it
-        if ("arrow".equalsIgnoreCase(config.getModel()) && arrowEntity != null && !arrowEntity.isDead()) {
+        if ("arrow".equalsIgnoreCase(bulletData.getModel()) && arrowEntity != null && !arrowEntity.isDead()) {
             Location currentLocation = arrowEntity.getLocation();
             currentLocation.getWorld().playSound(currentLocation, Sound.ENTITY_ARROW_HIT, 1.0f, 1.0f);
-            if (config.getExplosion() != null && config.getExplosion().isEnabled()) {
+            if (bulletData.getExplosion() != null && bulletData.getExplosion().isEnabled()) {
                 createExplosion(currentLocation);
             }
             executeOnLandCommands(currentLocation);
@@ -558,7 +558,7 @@ public class MagicBullet {
         }
 
         // Non-arrow bullets logic
-        if (config.getPhysics() != null && config.getPhysics().isBounce()) {
+        if (bulletData.getPhysics() != null && bulletData.getPhysics().isBounce()) {
             Vector normal = getBlockNormal(block);
             double dot = velocity.dot(normal);
             Vector reflection = velocity.clone().subtract(normal.clone().multiply(2 * dot));
@@ -571,7 +571,7 @@ public class MagicBullet {
             if (fallingBlockEntity != null && !fallingBlockEntity.isDead()) {
                 Location loc = fallingBlockEntity.getLocation();
                 fallingBlockEntity.remove();
-                Material blockMaterial = Material.valueOf(config.getBlock().toUpperCase());
+                Material blockMaterial = Material.valueOf(bulletData.getBlock().toUpperCase());
                 fallingBlockEntity = loc.getWorld().spawnFallingBlock(loc, blockMaterial.createBlockData());
                 fallingBlockEntity.setDropItem(false);
                 fallingBlockEntity.setGravity(false);
@@ -584,7 +584,7 @@ public class MagicBullet {
                 fallingBlockEntity.setVelocity(velocity);
             }
             // 弹射次数或速度过小时自动销毁
-            if (bounceCount >= config.getBounceLimit() || velocity.length() < 0.1) {
+            if (bounceCount >= bulletData.getBounceLimit() || velocity.length() < 0.1) {
                 Location currentLocation = getCurrentLocation();
                 if (currentLocation != null) {
                     executeOnLandCommands(currentLocation);
@@ -602,7 +602,7 @@ public class MagicBullet {
         Location currentLocation = getCurrentLocation();
         if (currentLocation != null) {
             // 非箭矢类型播放石头碰撞音效
-            if (!"arrow".equalsIgnoreCase(config.getModel())) {
+            if (!"arrow".equalsIgnoreCase(bulletData.getModel())) {
                 currentLocation.getWorld().playSound(currentLocation, Sound.BLOCK_STONE_BREAK, 0.5f, 1.0f);
             }
         }
@@ -611,9 +611,9 @@ public class MagicBullet {
     private void handleEntityCollision(LivingEntity entity, Location hitLocation) {
         hitEntities.add(entity.getUniqueId());
         penetrationCount++;
-        double damage = config.getDamage();
-        if (config.isHeadshotEnabled() && isHeadshot(entity, hitLocation.y())) {
-            damage *= config.getHeadshotMultiplier();
+        double damage = bulletData.getDamage();
+        if (bulletData.isHeadshotEnabled() && isHeadshot(entity, hitLocation.y())) {
+            damage *= bulletData.getHeadshotMultiplier();
             if (getCurrentLocation() != null) {
                 getCurrentLocation().getWorld().spawnParticle(Particle.CRIT, getCurrentLocation(), 10, 0.2, 0.2, 0.2, 0.1);
                 getCurrentLocation().getWorld().playSound(getCurrentLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.2f, 1.5f);
@@ -622,14 +622,14 @@ public class MagicBullet {
 
         // HAVE YOU IGNORED THAT
         // DO YOU KNOW WHAT YOU ARE DOING?????
-        if (config.isIgnoreArmor()) {
+        if (bulletData.isIgnoreArmor()) {
             entity.damage(damage, shooter);
         } else {
             entity.damage(damage, shooter);
         }
 
-        if (config.getPhysics() != null) {
-            Vector knockback = velocity.clone().normalize().multiply(config.getPhysics().getKnockback());
+        if (bulletData.getPhysics() != null) {
+            Vector knockback = velocity.clone().normalize().multiply(bulletData.getPhysics().getKnockback());
             entity.setVelocity(entity.getVelocity().add(knockback));
         }
         Location currentLocation = getCurrentLocation();
@@ -639,7 +639,7 @@ public class MagicBullet {
             // 执行命中命令
             executeOnHitCommands(currentLocation, entity);
         }
-        if (penetrationCount >= config.getPenetration()) {
+        if (penetrationCount >= bulletData.getPenetration()) {
             destroy();
         }
     }
@@ -654,7 +654,7 @@ public class MagicBullet {
             return;
         }
 
-        BulletData.ParticlePresetConfig preset = config.getParticlePreset();
+        BulletData.ParticlePresetConfig preset = bulletData.getParticlePreset();
         if (preset != null) {
             if ("spiral".equalsIgnoreCase(preset.getType())) {
                 int density = Math.max(1, preset.getDensity());
@@ -692,8 +692,8 @@ public class MagicBullet {
                     lastTrailLocation = location.clone();
                 }
             }
-        } else if (config.getParticle() != null) {
-            location.getWorld().spawnParticle(config.getParticle(), location, 1, 0, 0, 0, 0, null, true);
+        } else if (bulletData.getParticle() != null) {
+            location.getWorld().spawnParticle(bulletData.getParticle(), location, 1, 0, 0, 0, 0, null, true);
         }
     }
 
@@ -706,12 +706,12 @@ public class MagicBullet {
         int particleCount;
         double particleSpeed;
 
-        if (config.getParticlePreset() != null) {
-            particleType = config.getParticlePreset().getParticle();
-            particleCount = Math.max(1, config.getParticlePreset().getCount());
+        if (bulletData.getParticlePreset() != null) {
+            particleType = bulletData.getParticlePreset().getParticle();
+            particleCount = Math.max(1, bulletData.getParticlePreset().getCount());
             particleSpeed = 0.01;
-        } else if (config.getParticle() != null) {
-            particleType = config.getParticle();
+        } else if (bulletData.getParticle() != null) {
+            particleType = bulletData.getParticle();
             particleCount = 1;
             particleSpeed = 0.01;
         } else {
@@ -731,13 +731,13 @@ public class MagicBullet {
                         particleSpeed, null, true // 强制所有玩家都能看到
                 );
 
-            if (config.getParticlePreset() != null && "spiral".equalsIgnoreCase(config.getParticlePreset().getType())) {
+            if (bulletData.getParticlePreset() != null && "spiral".equalsIgnoreCase(bulletData.getParticlePreset().getType())) {
                 Vector up0 = Math.abs(direction.getY()) < 0.99 ? new Vector(0, 1, 0) : new Vector(1, 0, 0);
                 Vector right = direction.clone().crossProduct(up0).normalize();
                 Vector up = right.clone().crossProduct(direction).normalize();
 
-                double radius = config.getParticlePreset().getRadius() * 0.5; // 减小半径使激光看起来更集中
-                int spiralPoints = Math.max(2, config.getParticlePreset().getCount());
+                double radius = bulletData.getParticlePreset().getRadius() * 0.5; // 减小半径使激光看起来更集中
+                int spiralPoints = Math.max(2, bulletData.getParticlePreset().getCount());
 
                 for (int j = 0; j < spiralPoints; j++) {
                     double angle = (ratio * 10) + (2 * Math.PI / spiralPoints) * j;
@@ -778,13 +778,13 @@ public class MagicBullet {
             return;
         }
 
-        if (config.getExplosion() != null) {
+        if (bulletData.getExplosion() != null) {
             createExplosion(destroyLocation);
         }
     }
 
     private void createExplosion(Location location) {
-        BulletData.ExplosionConfig explosion = config.getExplosion();
+        BulletData.ExplosionConfig explosion = bulletData.getExplosion();
         if (explosion == null || !explosion.isEnabled()) return;
 
         if (explosion.getSound() != null && !explosion.getSound().isEmpty()) {
@@ -845,7 +845,7 @@ public class MagicBullet {
     }
 
     private void playShootSound(Location location) {
-        BulletData.ShootSoundConfig soundConfig = config.getShootSound();
+        BulletData.ShootSoundConfig soundConfig = bulletData.getShootSound();
         if (soundConfig != null && soundConfig.isEnabled()) {
             try {
                 Sound sound = Sound.valueOf(soundConfig.getSound().toUpperCase());
@@ -867,7 +867,7 @@ public class MagicBullet {
             int fired = flyCommandFired.get(i);
             if (max >= 0 && fired >= max) continue;
             if (interval > 0 && tick % interval == 0) {
-                commandExecutor.executeCommands(java.util.Collections.singletonList(flyCommands.get(i)), location, null, shooter, config.getName());
+                commandExecutor.executeCommands(java.util.Collections.singletonList(flyCommands.get(i)), location, null, shooter, bulletData.getName());
                 flyCommandFired.set(i, fired + 1);
             }
         }
@@ -875,11 +875,11 @@ public class MagicBullet {
 
     private void executeOnLandCommands(Location location) {
         if (location == null) return;
-        commandExecutor.executeOnLandCommands(config.getName(), location, shooter);
+        commandExecutor.executeOnLandCommands(bulletData.getName(), location, shooter);
     }
 
     private void executeOnHitCommands(Location location, LivingEntity target) {
         if (location == null || target == null) return;
-        commandExecutor.executeOnHitCommands(config.getName(), location, target, shooter);
+        commandExecutor.executeOnHitCommands(bulletData.getName(), location, target, shooter);
     }
 }

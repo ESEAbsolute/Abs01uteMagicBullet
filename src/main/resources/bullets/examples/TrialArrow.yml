@@ -1,0 +1,31 @@
+model_type: "arrow"      # 箭矢类型子弹
+item: "arrow"
+block: "arrow"
+shoot_sound:
+  enabled: true
+  sound: "ENTITY_ARROW_SHOOT"
+  volume: 0.8
+  pitch: 1.5
+particle_preset:
+  type: "trail"
+  particle: "smoke"
+  interval: 0.2   # 每隔多少距离生成一个粒子
+  count: 1
+damage: 5
+cooldown: 0.5
+max-range: 100.0
+bounce_limit: 0
+explosion:
+  enabled: true
+  radius: 0.8
+  damage: 3
+  particle: "smoke"
+  sound: "BLOCK_FIRE_EXTINGUISH"
+  sound_volume: 1.5
+  sound_pitch: 1.3
+  particle_count: 10
+  particle_spread: 0.2
+physics:
+  gravity: 0.05
+  knockback: 0.8
+  bounce: false

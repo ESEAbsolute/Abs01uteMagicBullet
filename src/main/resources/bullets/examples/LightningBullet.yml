@@ -1,0 +1,23 @@
+model_type: "item"
+item: "yellow_concrete"
+block: "yellow_concrete"
+particle: "electric_spark"
+damage: 15
+ignore_armor: true
+penetration: 3
+shoot_sound:
+  enabled: true
+  sound: "ENTITY_LIGHTNING_BOLT_THUNDER"
+  volume: 0.8
+  pitch: 1.5
+explosion:
+  radius: 1.5
+  damage: 20
+  particle: "electric_spark"
+  sound: "ENTITY_LIGHTNING_BOLT_IMPACT"
+  sound_volume: 3.0
+  sound_pitch: 1.2
+physics:
+  gravity: 0.0
+  knockback: 0.5
+  bounce: false

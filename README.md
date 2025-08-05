@@ -1,3 +1,3 @@
-# A fork of [Xiaomao-233/NEW-](https://github.com/Xiaomao-233/NEW-)
+ESEAbsolute Magic Bullet Plugin
 
-To compile, use maven `clean` and `package`
+README WIP

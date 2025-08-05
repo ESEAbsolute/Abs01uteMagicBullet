@@ -1,6 +1,7 @@
 package com.eseabsolute.magicbullet.entities.properties;
 
 import org.bukkit.Particle;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 public class BulletData {
     
@@ -22,13 +23,16 @@ public class BulletData {
     private final boolean headshotEnabled;
     private final double headshotMultiplier;
     private final boolean rotate;
+
+    private final YamlConfiguration rawConfiguration;
     
     public BulletData(String name, String modelType, String item, String block,
                       Particle particle, double damage, boolean ignoreArmor,
                       int penetration, ExplosionConfig explosion, PhysicsConfig physics,
                       double cooldown, double maxRange, int bounceLimit,
                       ParticlePresetConfig particlePreset, ShootSoundConfig shootSound,
-                      boolean headshotEnabled, double headshotMultiplier, boolean rotate) {
+                      boolean headshotEnabled, double headshotMultiplier, boolean rotate,
+                      YamlConfiguration rawConfiguration) {
         this.name = name;
         this.modelType = modelType;
         this.item = item;
@@ -47,6 +51,7 @@ public class BulletData {
         this.headshotEnabled = headshotEnabled;
         this.headshotMultiplier = headshotMultiplier;
         this.rotate = rotate;
+        this.rawConfiguration = rawConfiguration;
     }
     
     // Getters
@@ -88,6 +93,10 @@ public class BulletData {
     
     public PhysicsConfig getPhysics() {
         return physics;
+    }
+
+    public YamlConfiguration getRawConfiguration() {
+        return rawConfiguration;
     }
 
     public double getCooldown() { return cooldown; }
