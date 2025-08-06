@@ -1,0 +1,87 @@
+log.plugin.enable.header: "=========================================="
+log.plugin.enable.message: "&aAbs01uteMagicBullet Plugin Enabled!"
+log.plugin.enable.version: "&aVersion:&f %s"
+log.plugin.enable.author: "&aAuthors: &f%s"
+log.plugin.enable.footer: "=========================================="
+
+log.plugin.disable.header: "=========================================="
+log.plugin.disable.message: "&cAbs01uteMagicBullet Plugin Disabled!"
+log.plugin.disable.footer: "=========================================="
+
+log.debug.command.thread.main: "Command executed on thread: MAIN"
+log.debug.command.thread.async: "Command executed on thread: ASYNC [%s]"
+log.debug.command.raw: "Raw command: %s"
+log.debug.command.processed: "Processed command: %s"
+
+log.warning.bullet.create.item.material: "Invalid material \"%s\", used default material STONE"
+log.warning.bullet.sound.explosion: "Invalid explosion sound \"%s\", ignored"
+log.warning.bullet.sound.shoot: "Invalid shooting sound \"%s\", ignored"
+log.warning.bullet.task.execute: "Error occurred during bullet task execution: %s"
+log.warning.particle.type.default: "Invalid particle \"%s\", used default particle SMOKE"
+log.warning.particle.type.explosion: "Invalid explosion particle \"%s\", used default particle SMOKE"
+log.warning.particle.type.preset: "Invalid preset particle \"%s\", used default particle FLAME"
+
+log.warning.command.ignore.plugin.disabled: "Refused to perform command because plugin is already disabled!"
+log.warning.command.ignore.trim.empty: "Refused to perform command because the trimmed command is empty!"
+log.warning.command.ignore.internal.error: "Error occurred in performing command \"%s\" : %s"
+log.warning.command.placeholder.replace: "Error occurred in replacing placeholders: %s"
+
+log.error.reload: "Error occurred while reloading plugin config: %s"
+log.error.bullet.create.block: "Error occurred while creating a \"block display\" bullet on region scheduler: %s"
+log.error.bullet.create.item: "Error occurred while creating a \"item display\" bullet on region scheduler: %s"
+log.error.bullet.create.default.item: "Error occurred while creating a \"default item display\" bullet on region scheduler: %s"
+log.error.bullet.create.arrow: "Error occurred while creating a \"arrow\" bullet on region scheduler: %s"
+log.error.config.bullet.load.failed: "Loading bullet config \"%s\" failed: %s"
+log.error.config.bullet.load.error: "Config of bullet \"%s\" is invalid: %s"
+
+log.info.config.bullet.load.success: "Loading bullet config \"%s\" success!"
+log.info.config.bullet.commands.fly: "Bullet \"%s\" has loaded \"%s\" fly commands!"
+log.info.config.bullet.commands.land: "Bullet \"%s\" has loaded \"%s\" land commands!"
+log.info.config.bullet.commands.hit: "Bullet \"%s\" has loaded \"%s\" hit commands!"
+
+
+
+message.permission.denied: "You don't have permission!"
+
+message.command.invalid: "Invalid command!"
+
+message.command.reload.success: "Reload success!"
+message.command.reload.failed: "Reload failed!"
+
+message.command.list.header: "&6=== Available Bullets ==="
+message.command.list.display: "&e - %s"
+message.command.list.footer: "&6========================="
+
+message.command.shoot.help.header: "&aUsage & Sample:"
+message.command.shoot.help.usage: "&b/amb shoot <Player> <BulletName> <BulletType> <BulletShape> <LifeTicks> <LaunchOffsetVectorType> <x1> <y1> <z1> <VelocityVectorType> <x2> <y2> <z2>"
+message.command.shoot.help.example: "&b/amb shoot ESEAbsolute Example_bullet PROJECTILE SINGLE 2000 RELATIVE 0 0 0 LOCAL 0 0 1"
+message.command.shoot.help.coordinate.relative: "&dRelative coordinate format: &b~x directed to +x direction, ~y and ~z follow the same logic"
+message.command.shoot.help.coordinate.local: "&dLocal coordinate format: &b^x directed to the left, ^y directed upwards and ^z directed to the facing"
+
+message.command.shoot.error.player: "Player could not found: %s"
+message.command.shoot.error.bullet.name: "Bullet \"%s\" does not exist!"
+message.command.shoot.error.bullet.type: "Bullet type \"%s\" is invalid!"
+message.command.shoot.error.bullet.shape: "Bullet shape \"%s\" is invalid!"
+message.command.shoot.error.lifetime.range: "LifeTicks must be between 20 and 6000 ticks (1~300 seconds)!"
+message.command.shoot.error.lifetime.format: "LifeTicks number format invalid! Please input a positive integer."
+message.command.shoot.error.coordinate.launch.type: "Launch coordinate type \"%s\" is invalid!"
+message.command.shoot.error.coordinate.launch.number: "Launch coordinate parse failed: %s"
+message.command.shoot.error.coordinate.velocity.type: "Velocity vector (coordinate) type \"%s\" is invalid!"
+message.command.shoot.error.coordinate.velocity.number: "Velocity vector parse failed: %s"
+
+message.plugin.info.header: "&6=== Abs01uteMagicBullet Plugin Info ==="
+message.plugin.info.author: "&eAuthors: &f%s"
+message.plugin.info.description: "&eDescription: &f%s"
+message.plugin.info.version.plugin: "&ePlugin Version: &f%s"
+message.plugin.info.version.api: "&eAPI Version: &f%s"
+message.plugin.info.version.server: "&eServer Version: &f%s"
+message.plugin.info.footer: "&6======================================="
+
+message.plugin.help.header: "&6=== Abs01uteMagicBullet Commands Help ==="
+message.plugin.help.command.help: "&e/amb help &7- Show plugin help"
+message.plugin.help.command.info: "&e/amb info &7- Show plugin info"
+message.plugin.help.command.list: "&e/amb list &7- Show list of available bullets"
+message.plugin.help.command.shoot.basic: "&e/amb shoot <args> &7- Shoot a bullet"
+message.plugin.help.command.shoot.args: " &7 Arguments =>&e amb shoot <Player> <BulletName> <BulletType> <BulletShape> <LifeTicks> <LaunchOffsetVectorType> <x1> <y1> <z1> <VelocityVectorType> <x2> <y2> <z2>"
+message.plugin.help.command.reload: "&e/amb reload &7- Reload config, bullets and language files"
+message.plugin.help.footer: "&6========================================="

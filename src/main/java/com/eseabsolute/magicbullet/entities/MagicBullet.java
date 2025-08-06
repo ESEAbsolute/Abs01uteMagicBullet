@@ -18,6 +18,7 @@ import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import java.util.*;
+import java.util.logging.Level;
 
 import static com.eseabsolute.magicbullet.utils.HeadshotChecker.isHeadshot;
 
@@ -176,7 +177,7 @@ public class MagicBullet {
 
                 fallingBlockEntity.setInvisible(invisible);
             } catch (Exception e) {
-                plugin.getLogger().severe("在区域线程上创建方块子弹失败: " + e.getMessage());
+                plugin.getMessageUtils().log(Level.SEVERE, "log.error.bullet.create.block", e.getMessage());
                 e.printStackTrace();
             }
         });
@@ -205,12 +206,12 @@ public class MagicBullet {
                         });
                     });
                 } catch (Exception e) {
-                    plugin.getLogger().severe("在区域线程上创建物品子弹失败: " + e.getMessage());
+                    plugin.getMessageUtils().log(Level.SEVERE, "log.error.bullet.create.item", e.getMessage());
                     e.printStackTrace();
                 }
             });
         } catch (IllegalArgumentException e) {
-            plugin.getLogger().warning("无效的物品材料: " + bulletData.getItem());
+            plugin.getMessageUtils().log(Level.WARNING, "log.warning.bullet.create.item.material", bulletData.getItem());
             final ItemStack defaultItem = new ItemStack(Material.STONE);
             plugin.getServer().getRegionScheduler().execute(plugin, location, () -> {
                 try {
@@ -230,7 +231,7 @@ public class MagicBullet {
                         });
                     });
                 } catch (Exception ex) {
-                    plugin.getLogger().severe("在区域线程上创建默认物品子弹失败: " + ex.getMessage());
+                    plugin.getMessageUtils().log(Level.SEVERE, "log.error.bullet.create.default.item", e.getMessage());
                     ex.printStackTrace();
                 }
             });
@@ -251,7 +252,7 @@ public class MagicBullet {
                 arrowEntity.setPersistent(false);
                 arrowEntity.setInvisible(invisible);
             } catch (Exception e) {
-                plugin.getLogger().severe("在区域线程上创建箭矢子弹失败: " + e.getMessage());
+                plugin.getMessageUtils().log(Level.SEVERE, "log.error.bullet.create.arrow", e.getMessage());
                 e.printStackTrace();
             }
         });
@@ -817,7 +818,7 @@ public class MagicBullet {
                     }
                 }
             } catch (IllegalArgumentException ignored) {
-                plugin.getLogger().warning("无效的爆炸音效: " + explosion.getSound() + "，不播放音效");
+                plugin.getMessageUtils().log(Level.WARNING, "log.warning.bullet.sound.explosion", explosion.getSound());
             }
         }
 
@@ -851,7 +852,7 @@ public class MagicBullet {
                 Sound sound = Sound.valueOf(soundConfig.getSound().toUpperCase());
                 location.getWorld().playSound(location, sound, soundConfig.getVolume(), soundConfig.getPitch());
             } catch (IllegalArgumentException ignored) {
-                plugin.getLogger().warning("无效的射击音效: " + soundConfig.getSound() + "，不播放音效");
+                plugin.getMessageUtils().log(Level.WARNING, "log.warning.bullet.sound.shoot", soundConfig.getSound());
             }
         }
     }

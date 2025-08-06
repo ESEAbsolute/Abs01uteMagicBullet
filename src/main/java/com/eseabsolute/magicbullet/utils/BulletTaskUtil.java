@@ -1,22 +1,20 @@
 package com.eseabsolute.magicbullet.utils;
 
+import com.eseabsolute.magicbullet.Abs01uteMagicBulletPlugin;
 import io.papermc.paper.threadedregions.scheduler.RegionScheduler;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
+
+import java.util.logging.Level;
 
 public class BulletTaskUtil {
-    /**
-     * 只支持 Folia 的子弹调度
-     */
-    public static void runBulletTask(Plugin plugin, Player anchor, Runnable runnable) {
+    public static void runBulletTask(Abs01uteMagicBulletPlugin plugin, Player anchor, Runnable runnable) {
         RegionScheduler scheduler = plugin.getServer().getRegionScheduler();
 
         scheduler.runAtFixedRate(plugin, anchor.getLocation(), task -> {
             try {
                 runnable.run();
             } catch (Exception e) {
-                // 记录异常但不中断任务
-                plugin.getLogger().warning("子弹任务执行出错: " + e.getMessage());
+                plugin.getMessageUtils().log(Level.WARNING, "log.warning.bullet.task.execute", e.getMessage());
                 e.printStackTrace();
             }
 

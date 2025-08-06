@@ -16,7 +16,6 @@ public class BulletManager {
             "bullets/examples/ExampleBullet.yml",
             "bullets/examples/FireBullet.yml",
             "bullets/examples/LightningBullet.yml",
-            "bullets/examples/LightningBulletSimplified.yml",
             "bullets/examples/SpiralArrow.yml",
             "bullets/examples/TrialArrow.yml",
             "bullets/examples/WeatherControlBullet.yml"
@@ -24,7 +23,6 @@ public class BulletManager {
 
     private final Abs01uteMagicBulletPlugin plugin;
     private final Map<String, BulletData> bullets = new HashMap<>();
-    private YamlConfiguration bulletsConfig; // 新增成员变量
     
     public BulletManager(Abs01uteMagicBulletPlugin plugin) {
         this.plugin = plugin;
@@ -49,10 +47,10 @@ public class BulletManager {
                 BulletData bullet = loadBullet(bulletName, configuration);
                 if (bullet != null) {
                     bullets.put(bulletName, bullet);
-                    plugin.getLogger().info("成功加载子弹配置: " + bulletName);
+                    plugin.getMessageUtils().log(Level.INFO, "log.info.config.bullet.load.success", bulletName);
                 }
             } catch (Exception e) {
-                plugin.getLogger().log(Level.SEVERE, "加载子弹配置失败: " + bulletConfiguration.getName(), e);
+                plugin.getMessageUtils().log(Level.SEVERE, "log.error.config.bullet.load.failed", bulletConfiguration.getName(), e.toString());
             }
         }
     }
@@ -81,16 +79,15 @@ public class BulletManager {
         }
         
         try {
-
             String modelType = configuration.getString("model_type", "item");
             String item = configuration.getString("item", "STONE");
             String block = configuration.getString("block", "STONE");
-            Particle particle = null;
+            Particle particle;
             
             try {
                 particle = Particle.valueOf(configuration.getString("particle", "SMOKE").toUpperCase());
             } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("无效的粒子类型: " + configuration.getString("particle") + "，使用默认粒子");
+                plugin.getMessageUtils().log(Level.WARNING, "log.warning.particle.type.default", configuration.getString("particle"));
                 particle = Particle.SMOKE;
             }
             
@@ -105,11 +102,11 @@ public class BulletManager {
                 boolean enabled = explosionSection.getBoolean("enabled", true);
                 double radius = explosionSection.getDouble("radius", 3.0);
                 double explosionDamage = explosionSection.getDouble("damage", 8.0);
-                Particle explosionParticle = null;
+                Particle explosionParticle;
                 try {
                     explosionParticle = Particle.valueOf(explosionSection.getString("particle", "EXPLOSION").toUpperCase());
                 } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("无效的爆炸粒子类型: " + explosionSection.getString("particle") + "，使用默认粒子");
+                    plugin.getMessageUtils().log(Level.WARNING, "log.warning.particle.type.explosion", explosionSection.getString("particle"));
                     explosionParticle = Particle.EXPLOSION;
                 }
                 String explosionSound = explosionSection.getString("sound", "ENTITY_GENERIC_EXPLODE");
@@ -141,7 +138,7 @@ public class BulletManager {
                 try {
                     presetParticle = Particle.valueOf(presetSection.getString("particle", "FLAME").toUpperCase());
                 } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("无效的粒子预设类型: " + presetSection.getString("particle") + "，使用 FLAME");
+                    plugin.getMessageUtils().log(Level.WARNING, "log.warning.particle.type.preset", presetSection.getString("particle"));
                     presetParticle = Particle.FLAME;
                 }
                 double radius = presetSection.getDouble("radius", 0.4);
@@ -155,7 +152,7 @@ public class BulletManager {
             }
             
 
-            BulletData.ShootSoundConfig shootSound = null;
+            BulletData.ShootSoundConfig shootSound;
             ConfigurationSection soundSection = configuration.getConfigurationSection("shoot_sound");
             if (soundSection != null) {
                 boolean enabled = soundSection.getBoolean("enabled", true);
@@ -183,7 +180,7 @@ public class BulletManager {
             if (onFlySection != null) {
                 List<String> commands = onFlySection.getStringList("commands");
                 if (!commands.isEmpty()) {
-                    plugin.getLogger().info("子弹 " + name + " 加载了 " + commands.size() + " 个飞行命令");
+                    plugin.getMessageUtils().log(Level.INFO, "log.info.config.bullet.commands.fly", name, ((Integer) commands.size()).toString());
                 }
             }
             
@@ -192,7 +189,7 @@ public class BulletManager {
             if (onLandSection != null) {
                 List<String> commands = onLandSection.getStringList("commands");
                 if (!commands.isEmpty()) {
-                    plugin.getLogger().info("子弹 " + name + " 加载了 " + commands.size() + " 个落地命令");
+                    plugin.getMessageUtils().log(Level.INFO, "log.info.config.bullet.commands.land", name, ((Integer) commands.size()).toString());
                 }
             }
             
@@ -201,7 +198,7 @@ public class BulletManager {
             if (onHitSection != null) {
                 List<String> commands = onHitSection.getStringList("commands");
                 if (!commands.isEmpty()) {
-                    plugin.getLogger().info("子弹 " + name + " 加载了 " + commands.size() + " 个命中命令");
+                    plugin.getMessageUtils().log(Level.INFO, "log.info.config.bullet.commands.hit", name, ((Integer) commands.size()).toString());
                 }
             }
 
@@ -210,7 +207,7 @@ public class BulletManager {
                     shootSound, headshotEnabled, headshotMultiplier, rotate, configuration);
             
         } catch (Exception e) {
-            plugin.getLogger().severe("子弹配置错误 " + name + ": " + e.getMessage());
+            plugin.getMessageUtils().log(Level.SEVERE, "log.error.config.bullet.load.error", name, e.getMessage());
             return null;
         }
     }

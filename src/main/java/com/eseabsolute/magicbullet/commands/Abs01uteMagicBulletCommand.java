@@ -6,8 +6,9 @@ import com.eseabsolute.magicbullet.entities.properties.BulletType;
 import com.eseabsolute.magicbullet.entities.properties.CoordinateType;
 import com.eseabsolute.magicbullet.entities.MagicBullet;
 import com.eseabsolute.magicbullet.entities.properties.BulletData;
+import com.eseabsolute.magicbullet.messages.MessageLevel;
 import com.eseabsolute.magicbullet.utils.BulletTaskUtil;
-import com.eseabsolute.magicbullet.utils.MessageUtils;
+import com.eseabsolute.magicbullet.messages.MessageUtils;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -33,9 +34,9 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
     }
     
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String @NotNull [] args) {
         if (!sender.hasPermission("abs01utemagicbullet.user") || !sender.hasPermission("abs01utemagicbullet.admin")) {
-            messageUtils.sendConfigMessage(sender, "messages.no-permission");
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.no-permission");
             return true;
         }
 
@@ -63,7 +64,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
                 handleShoot(sender, args);
                 break;
             default:
-                messageUtils.sendConfigMessage(sender, "messages.invalid-command");
+                messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.invalid");
                 break;
         }
         
@@ -72,62 +73,55 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
 
     private void handleReload(CommandSender sender) {
         if (!sender.hasPermission("abs01utemagicbullet.admin")) {
-            messageUtils.sendConfigMessage(sender, "messages.no-permission");
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.no-permission");
             return;
         }
         
         if (plugin.reloadPlugin()) {
-            messageUtils.sendConfigMessage(sender, "messages.reload-success");
+            messageUtils.sendMessage(sender, MessageLevel.SUCCESS, "message.command.reload.success");
         } else {
-            messageUtils.sendConfigMessage(sender, "messages.reload-failed");
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.reload.failed");
         }
     }
 
-    // TODO rewrite i18n
     private void handleInfo(CommandSender sender) {
-        messageUtils.sendInfoMessage(sender, "&6=== Abs01uteMagicBullet 插件信息 ===");
-        messageUtils.sendInfoMessage(sender, "&e版本: &f" + plugin.getDescription().getVersion());
-        messageUtils.sendInfoMessage(sender, "&e作者: &f" + plugin.getDescription().getAuthors());
-        messageUtils.sendInfoMessage(sender, "&e描述: &f" + plugin.getDescription().getDescription());
-        messageUtils.sendInfoMessage(sender, "&eAPI版本: &f" + plugin.getDescription().getAPIVersion());
-        messageUtils.sendInfoMessage(sender, "&e服务器版本: &f" + plugin.getServer().getVersion());
-        messageUtils.sendInfoMessage(sender, "&6================================");
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.info.header");
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.info.author", plugin.getDescription().getAuthors().toString());
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.info.description", plugin.getDescription().getDescription());
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.info.version.plugin",  plugin.getDescription().getVersion());
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.info.version.api", plugin.getDescription().getAPIVersion());
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.info.version.server", plugin.getServer().getVersion());
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.info.footer");
     }
 
-    // TODO rewrite i18n
     private void showHelp(CommandSender sender) {
-        messageUtils.sendInfoMessage(sender, "&6=== Abs01uteMagicBullet 命令帮助 ===");
-        messageUtils.sendInfoMessage(sender, "&e/amb help &7- 显示此帮助信息");
-        messageUtils.sendInfoMessage(sender, "&e/amb info &7- 显示插件信息");
-        messageUtils.sendInfoMessage(sender, "&e/amb list &7- 显示可用子弹列表");
-        messageUtils.sendInfoMessage(sender, "&e/amb shoot [玩家名] <子弹名> <局部起点偏移^x,^y,^z> <局部终点偏移^x,^y,^z> [存活时间(ticks)] [速度]");
-        messageUtils.sendInfoMessage(sender, "&7  速度为0时将创建激光效果，存活时间即激光长度");
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.help.header");
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.help.command.help");
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.help.command.info");
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.help.command.list");
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.help.command.shoot.basic");
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.help.command.shoot.args");
         if (sender.hasPermission("abs01utemagicbullet.admin")) {
-            messageUtils.sendInfoMessage(sender, "&e/amb reload &7- 重载插件配置");
+            messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.help.command.reload");
         }
-        messageUtils.sendInfoMessage(sender, "&6================================");
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.plugin.help.footer");
     }
 
-    // TODO rewrite i18n
     private void handleList(CommandSender sender) {
-        messageUtils.sendInfoMessage(sender, "&6=== 可用子弹列表 ===");
-        
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.command.list.header");
         for (String bulletName : plugin.getBulletManager().getBulletNames()) {
-            messageUtils.sendInfoMessage(sender, "&e- " + bulletName);
+            messageUtils.sendMessage(sender, MessageLevel.NONE, "message.command.list.display", bulletName);
         }
-        
-        messageUtils.sendInfoMessage(sender, "&6==================");
+        messageUtils.sendMessage(sender, MessageLevel.NONE, "message.command.list.footer");
     }
 
-    // Command: amb shoot Player Bullet BulletType BulletShape LifeTicks LaunchPositionOffsetVectorType x1 y1 z1 VelocityVectorType x2 y2 z2
     private void handleShoot(CommandSender sender, String[] args) {
-        // TODO rewrite i18n
         if (args.length != 14) {
-            // TODO rewrite command help
-            messageUtils.sendErrorMessage(sender, "Usage & Sample:");
-            messageUtils.sendErrorMessage(sender, "/amb shoot Player Bullet BulletType BulletShape LifeTicks LaunchPositionOffsetVectorType x1 y1 z1 VelocityVectorType x2 y2 z2");
-            messageUtils.sendErrorMessage(sender, "/amb shoot ESEAbsolute Example_bullet PROJECTILE SINGLE 2000 LOCAL 0 0 0 LOCAL 0 0 1");
-            messageUtils.sendInfoMessage(sender, "Local coordinate format: ^x directed to the left, ^y directed upwards and ^z directed to the facing");
+            messageUtils.sendMessage(sender, MessageLevel.NONE, "message.command.shoot.help.header");
+            messageUtils.sendMessage(sender, MessageLevel.NONE, "message.command.shoot.help.usage");
+            messageUtils.sendMessage(sender, MessageLevel.NONE, "message.command.shoot.help.example");
+            messageUtils.sendMessage(sender, MessageLevel.NONE, "message.command.shoot.help.coordinate.relative");
+            messageUtils.sendMessage(sender, MessageLevel.NONE, "message.command.shoot.help.coordinate.local");
             return;
         }
 
@@ -137,16 +131,14 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
         String playerNameRaw = args[1];
         shooter = plugin.getServer().getPlayer(playerNameRaw);
         if (shooter == null) {
-            // TODO i18n
-            messageUtils.sendErrorMessage(sender, "找不到玩家: " + playerNameRaw);
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.shoot.error.player", playerNameRaw);
             return;
         }
 
         // [2] Bullet arg logic
         String bulletNameRaw = args[2];
         if (!plugin.getBulletManager().hasBullet(bulletNameRaw)) {
-            // TODO i18n
-            messageUtils.sendErrorMessage(sender, "子弹 " + bulletNameRaw + " 不存在！");
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.shoot.error.bullet.name", bulletNameRaw);
             return;
         }
         BulletData bullet = plugin.getBulletManager().getBullet(bulletNameRaw);
@@ -157,8 +149,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
         try {
             bulletType = BulletType.valueOf(bulletTypeRaw);
         } catch (IllegalArgumentException e) {
-            // TODO i18n
-            messageUtils.sendErrorMessage(sender, "子弹类型 " + bulletTypeRaw + " 不存在！");
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.shoot.error.bullet.type", bulletTypeRaw);
             return;
         }
 
@@ -168,8 +159,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
         try {
             bulletShape = BulletShape.valueOf(bulletShapeRaw);
         } catch (IllegalArgumentException e) {
-            // TODO i18n
-            messageUtils.sendErrorMessage(sender, "子弹样式 " + bulletShapeRaw + " 不存在！");
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.shoot.error.bullet.shape", bulletShapeRaw);
             return;
         }
 
@@ -179,13 +169,11 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
         try {
             maxLifeTicks = Integer.parseInt(lifeTicksRaw);
             if (maxLifeTicks < 20 || maxLifeTicks > 6000) {
-                // TODO i18n
-                messageUtils.sendErrorMessage(sender, "存活时间必须在 20~6000 ticks之间 (1~300秒)");
+                messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.shoot.error.lifetime.range");
                 return;
             }
         } catch (NumberFormatException e) {
-            // TODO i18n
-            messageUtils.sendErrorMessage(sender, "无效的存活时间值！请输入整数。");
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.shoot.error.lifetime.format");
             return;
         }
 
@@ -195,8 +183,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
         try {
             launchCoordinateType = CoordinateType.valueOf(launchCoordinateTypeRaw);
         } catch (IllegalArgumentException e) {
-            // TODO i18n
-            messageUtils.sendErrorMessage(sender, "坐标格式 " + launchCoordinateTypeRaw + " 不存在！");
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.shoot.error.coordinate.launch.type", launchCoordinateTypeRaw);
             return;
         }
 
@@ -208,8 +195,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             double z = Double.parseDouble(args[9]);
             launchOffsetVector = new Vector(x, y, z);
         } catch (Exception e) {
-            // TODO i18n
-            messageUtils.sendErrorMessage(sender, "起始点坐标解析失败: " + e.getMessage());
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.shoot.error.coordinate.launch.number", e.getMessage());
             return;
         }
 
@@ -219,8 +205,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
         try {
             velocityCoordinateType = CoordinateType.valueOf(velocityCoordinateTypeRaw);
         } catch (IllegalArgumentException e) {
-            // TODO i18n
-            messageUtils.sendErrorMessage(sender, "坐标格式 " + velocityCoordinateTypeRaw + " 不存在！");
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.shoot.error.coordinate.velocity.type", velocityCoordinateTypeRaw);
             return;
         }
 
@@ -232,8 +217,7 @@ public class Abs01uteMagicBulletCommand implements CommandExecutor, TabCompleter
             double z = Double.parseDouble(args[13]);
             velocityVector = new Vector(x, y, z);
         } catch (Exception e) {
-            // TODO i18n
-            messageUtils.sendErrorMessage(sender, "速度向量解析失败: " + e.getMessage());
+            messageUtils.sendMessage(sender, MessageLevel.ERROR, "message.command.shoot.error.coordinate.velocity.number", e.getMessage());
             return;
         }
 
